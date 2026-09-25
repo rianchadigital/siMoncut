@@ -6,6 +6,7 @@ import {VitePWA} from 'vite-plugin-pwa';
 
 export default defineConfig(() => {
   return {
+    base: './',
     plugins: [
       react(),
       tailwindcss(),
@@ -13,15 +14,15 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
         manifest: {
-          id: '/',
-          name: 'SIMON CUTI – Puskesmas Kepulauan Seribu Selatan',
-          short_name: 'SIMON CUTI',
-          description: 'Sistem Monitoring Cuti Pegawai Puskesmas Kepulauan Seribu Selatan terintegrasi Google Spreadsheet dan PWA.',
+          id: './',
+          name: 'SiMONCUT – Sistem Monitoring Cuti Pegawai Puskesmas Kepulauan Seribu Selatan',
+          short_name: 'SiMONCUT',
+          description: 'Sistem Monitoring Cuti Pegawai Puskesmas Kepulauan Seribu Selatan. Tagline: “Pantau Cuti, Mudahkan Pengelolaan Kepegawaian”',
           theme_color: '#0d9488',
           background_color: '#f8fafc',
           display: 'standalone',
-          start_url: '/',
-          scope: '/',
+          start_url: './',
+          scope: './',
           icons: [
             {
               src: '/pwa-192x192.png',
@@ -47,14 +48,18 @@ export default defineConfig(() => {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         },
         devOptions: {
-          enabled: true,
-          type: 'module',
+          enabled: false,
         },
       }),
     ],
+    build: {
+      outDir: 'dist',
+      assetsDir: 'assets',
+      sourcemap: false,
+    },
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(process.cwd(), '.'),
       },
     },
     server: {
