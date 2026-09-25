@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" width="200" height="240">
+  <!-- Official Puskesmas Indonesia Logo (Permenkes 43/2019) -->
+  <!-- Hexagon Outer Border in Dark Green -->
+  <polygon 
+    points="100,8 188,58 188,172 100,222 12,172 12,58" 
+    fill="#ffffff" 
+    stroke="#005e09" 
+    stroke-width="11" 
+    stroke-linejoin="round"
+  />
+
+  <g id="puskesmas-cross-house">
+    <!-- Base Greek Cross (Green) -->
+    <!-- Top arm -->
+    <rect x="74" y="44" width="52" height="50" fill="#005e09" />
+    
+    <!-- Left arm -->
+    <rect x="32" y="92" width="44" height="52" fill="#005e09" />
+
+    <!-- Right arm (upper part) -->
+    <path d="M 124 92 L 168 92 L 168 126 L 124 92 Z" fill="#004806" />
+
+    <!-- Slanted House Roof Overlay with White Dividing Gutter -->
+    <!-- House roof triangle and base -->
+    <path d="M 68 144 L 126 90 L 168 126 L 168 144 L 126 144 L 126 194 L 74 194 L 74 144 Z" fill="#005e09" />
+
+    <!-- White Separation Gap / Slanted Border -->
+    <line x1="66" y1="145" x2="126" y2="89" stroke="#ffffff" stroke-width="7" stroke-linecap="round" />
+    <line x1="126" y1="89" x2="168" y2="125" stroke="#ffffff" stroke-width="6" stroke-linecap="round" />
+
+    <!-- Two Intersecting White Rings (Symbol of Public Health Community) -->
+    <g stroke="#ffffff" stroke-width="3.5" fill="none">
+      <circle cx="112" cy="126" r="11" />
+      <circle cx="128" cy="126" r="11" />
+    </g>
+  </g>
+</svg>

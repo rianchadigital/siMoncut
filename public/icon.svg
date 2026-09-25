@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f766e"/>
+      <stop offset="50%" stop-color="#0d9488"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- Subtle Wave Pattern for Kepulauan Seribu -->
+  <path d="M0,380 C120,350 180,410 280,380 C380,350 440,390 512,370 L512,512 L0,512 Z" fill="#ffffff" fill-opacity="0.08"/>
+  <path d="M0,420 C100,400 190,440 290,410 C390,380 430,420 512,410 L512,512 L0,512 Z" fill="#ffffff" fill-opacity="0.1"/>
+
+  <!-- Main Card / Emblem -->
+  <g filter="url(#shadow)" transform="translate(96, 80)">
+    <!-- Calendar Body -->
+    <rect x="0" y="40" width="320" height="280" rx="36" fill="#ffffff"/>
+    
+    <!-- Calendar Header (Teal) -->
+    <path d="M0,76 C0,56 16,40 36,40 L284,40 C304,40 320,56 320,76 L320,110 L0,110 Z" fill="#0f766e"/>
+    
+    <!-- Calendar Binder Rings -->
+    <rect x="64" y="20" width="24" height="42" rx="12" fill="#e2e8f0"/>
+    <rect x="68" y="24" width="16" height="34" rx="8" fill="#cbd5e1"/>
+    
+    <rect x="232" y="20" width="24" height="42" rx="12" fill="#e2e8f0"/>
+    <rect x="236" y="24" width="16" height="34" rx="8" fill="#cbd5e1"/>
+
+    <!-- Medical Health Cross Symbol in Center of Calendar -->
+    <g transform="translate(160, 215)">
+      <!-- Green circle backdrop -->
+      <circle cx="0" cy="0" r="68" fill="#f0fdf4"/>
+      <circle cx="0" cy="0" r="60" fill="#ccfbf1"/>
+      <!-- Puskesmas Cross -->
+      <rect x="-14" y="-42" width="28" height="84" rx="8" fill="#0d9488"/>
+      <rect x="-42" y="-14" width="84" height="28" rx="8" fill="#0d9488"/>
+      <!-- Checkmark for Leave Approval -->
+      <circle cx="32" cy="30" r="22" fill="#10b981"/>
+      <path d="M22,30 L29,37 L42,23" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <!-- Mini Leave/Coconut Palm & Sun Motif -->
+    <circle cx="56" cy="150" r="14" fill="#fde047" opacity="0.9"/>
+    <path d="M42,280 Q56,230 76,210 Q66,220 54,230" stroke="#047857" stroke-width="4" fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- Title Badge SIMON CUTI -->
+  <g transform="translate(256, 440)" text-anchor="middle">
+    <text font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="34" fill="#ffffff" letter-spacing="3">SIMON CUTI</text>
+    <text y="24" font-family="system-ui, -apple-system, sans-serif" font-weight="500" font-size="16" fill="#ccfbf1" letter-spacing="1">PUSKESMAS KEP. SERIBU SELATAN</text>
+  </g>
+</svg>
