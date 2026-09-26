@@ -179,11 +179,17 @@ export const IntegrationModal: React.FC<IntegrationModalProps> = ({
           {activeTab === 'koneksi' && (
             <div className="space-y-4">
               <div className="p-4 rounded-xl bg-teal-50/60 border border-teal-200">
-                <h4 className="font-bold text-teal-950 text-sm mb-1">
-                  Koneksi Langsung Google Spreadsheet
-                </h4>
+                <div className="flex items-center justify-between mb-1">
+                  <h4 className="font-bold text-teal-950 text-sm">
+                    Koneksi Langsung Google Spreadsheet (App Script)
+                  </h4>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                    Auto-Sync Aktif
+                  </span>
+                </div>
                 <p className="text-xs text-teal-800 leading-relaxed">
-                  Masukkan Web App URL hasil deployment Google Apps Script Anda. Setelah terhubung, SiMONCUT akan langsung membaca dan menampilkan data real-time dari Spreadsheet Puskesmas Kepulauan Seribu Selatan setiap kali Anda klik tombol <strong>Refresh Data</strong>.
+                  <strong>Otomatis Tanpa Perlu Klik Manual:</strong> Setiap kali aplikasi SiMONCUT dibuka di peramban (browser) atau gawai (gadget) mana saja (HP, tablet, komputer), sistem secara otomatis terkoneksi dan menyegarkan data ke database Google Apps Script. Tombol sinkronisasi manual tetap tersedia untuk pembaruan instan kapan saja.
                 </p>
               </div>
 

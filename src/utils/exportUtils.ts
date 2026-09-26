@@ -81,6 +81,58 @@ export function exportTempatTugasToExcel(summaryList: TempatTugasSummary[]) {
 }
 
 /**
+ * Export total leave taken per employee to Excel
+ */
+export interface RekapPegawaiCutiRow {
+  no: number;
+  nip: string;
+  nama: string;
+  pangkatGolongan?: string;
+  jabatan: string;
+  tempatTugas: string;
+  statusKepegawaian: string;
+  frekuensiPengajuan: number;
+  totalHariCuti: number;
+  cutiTahunanHari: number;
+  cutiSakitHari: number;
+  cutiAlasanPentingHari: number;
+  cutiMelahirkanHari: number;
+  cutiBesarHari: number;
+  cutiLainnyaHari: number;
+  sisaCutiTahunan: number;
+  cutiTerakhir: string;
+}
+
+export function exportRekapPegawaiCutiToExcel(rows: RekapPegawaiCutiRow[], tahunText = 'Semua Waktu') {
+  const exportData = rows.map((r) => ({
+    'No': r.no,
+    'NIP': r.nip,
+    'Nama Pegawai': r.nama,
+    'Pangkat / Golongan': r.pangkatGolongan || '-',
+    'Jabatan': r.jabatan,
+    'Tempat Tugas': r.tempatTugas,
+    'Status Kepegawaian': r.statusKepegawaian,
+    'Total Hari Cuti Diambil': `${r.totalHariCuti} Hari`,
+    'Frekuensi Cuti': `${r.frekuensiPengajuan} kali`,
+    'Cuti Tahunan (Hari)': r.cutiTahunanHari,
+    'Sisa Cuti Tahunan (Hari)': r.sisaCutiTahunan,
+    'Cuti Sakit (Hari)': r.cutiSakitHari,
+    'Cuti Alasan Penting (Hari)': r.cutiAlasanPentingHari,
+    'Cuti Bersalin/Melahirkan (Hari)': r.cutiMelahirkanHari,
+    'Cuti Besar (Hari)': r.cutiBesarHari,
+    'Cuti Lainnya (Hari)': r.cutiLainnyaHari,
+    'Riwayat Cuti Terakhir': r.cutiTerakhir,
+  }));
+
+  const safePeriod = tahunText.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  exportToExcel(
+    exportData,
+    `simon_rekap_cuti_per_pegawai_${safePeriod}_${new Date().toISOString().substring(0, 10)}`,
+    'Rekap Cuti Pegawai'
+  );
+}
+
+/**
  * Download standard CSV for Google Sheet import
  */
 export function downloadCSV(content: string, fileName: string) {

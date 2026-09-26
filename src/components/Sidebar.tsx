@@ -16,6 +16,7 @@ import {
   CalendarPlus,
 } from 'lucide-react';
 import { UserRole } from '../types';
+import { LogoJayaRaya, LogoKesehatan } from './OfficialLogos';
 
 export type NavTab =
   | 'dashboard'
@@ -85,8 +86,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Brand & Subtitle */}
       <div className="p-4 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center text-slate-950 font-black text-xs tracking-tight shadow-inner shrink-0">
-            SMC
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-800 border border-slate-700 shadow-inner shrink-0">
+            <LogoJayaRaya className="w-7 h-8 object-contain" />
+            <div className="w-px h-5 bg-slate-600" />
+            <LogoKesehatan className="w-7 h-8 object-contain" />
           </div>
           <div>
             <div className="text-base font-black text-white tracking-wide">SiMONCUT</div>

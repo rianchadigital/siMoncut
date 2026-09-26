@@ -229,28 +229,33 @@ export function useSimonData() {
   }, []);
 
   // Fetch / Sync with Google Spreadsheet via Google Apps Script
-  const refreshData = useCallback(async () => {
-    setIsLoading(true);
-    setSyncStatus({ type: 'idle', message: 'Menghubungkan ke Google Spreadsheet...' });
+  const refreshData = useCallback(async (isSilent = false) => {
+    if (!isSilent) {
+      setIsLoading(true);
+      setSyncStatus({ type: 'idle', message: 'Menghubungkan ke Google Spreadsheet...' });
+    }
 
-    if (!gasUrl) {
-      // Offline/Local Refresh simulation
-      setTimeout(() => {
-        const now = new Date().toISOString();
-        setLastSync(now);
-        localStorage.setItem(STORAGE_KEYS.LAST_SYNC, now);
-        setIsLoading(false);
-        setSyncStatus({
-          type: 'warning',
-          message:
-            'Sinkronisasi lokal selesai. Sambungkan Google Apps Script Web App URL untuk mengambil data live dari Spreadsheet.',
-        });
-      }, 500);
+    const targetUrl = gasUrl && gasUrl.trim() ? gasUrl.trim() : DEFAULT_GAS_URL;
+
+    if (!targetUrl) {
+      if (!isSilent) {
+        setTimeout(() => {
+          const now = new Date().toISOString();
+          setLastSync(now);
+          localStorage.setItem(STORAGE_KEYS.LAST_SYNC, now);
+          setIsLoading(false);
+          setSyncStatus({
+            type: 'warning',
+            message:
+              'Sinkronisasi lokal selesai. Sambungkan Google Apps Script Web App URL untuk mengambil data live dari Spreadsheet.',
+          });
+        }, 500);
+      }
       return;
     }
 
     try {
-      const endpoint = gasUrl.includes('?') ? `${gasUrl}&action=all` : `${gasUrl}?action=all`;
+      const endpoint = targetUrl.includes('?') ? `${targetUrl}&action=all` : `${targetUrl}?action=all`;
       const response = await fetch(endpoint, {
         method: 'GET',
         headers: { Accept: 'application/json' },
@@ -296,7 +301,7 @@ export function useSimonData() {
         localStorage.setItem(STORAGE_KEYS.LAST_SYNC, now);
         setSyncStatus({
           type: 'success',
-          message: 'Berhasil sinkronisasi dengan Google Spreadsheet Puskesmas!',
+          message: 'Berhasil sinkronisasi otomatis dengan Google Spreadsheet Puskesmas!',
         });
       } else {
         if (result.message && result.message.includes('Sheet DATA_PEGAWAI tidak ditemukan')) {
@@ -308,23 +313,51 @@ export function useSimonData() {
           const now = new Date().toISOString();
           setLastSync(now);
           localStorage.setItem(STORAGE_KEYS.LAST_SYNC, now);
-        } else {
+        } else if (!isSilent) {
           throw new Error(result.message || 'Format data dari Spreadsheet tidak valid');
         }
       }
     } catch (err) {
-      console.error('Fetch error:', err);
-      setSyncStatus({
-        type: 'error',
-        message:
-          err instanceof Error
-            ? `Gagal sinkronisasi: ${err.message}`
-            : 'Gagal terhubung ke Google Apps Script. Periksa URL dan izin akses (Anyone).',
-      });
+      console.warn('Fetch GAS error:', err);
+      if (!isSilent) {
+        setSyncStatus({
+          type: 'error',
+          message:
+            err instanceof Error
+              ? `Gagal sinkronisasi: ${err.message}`
+              : 'Gagal terhubung ke Google Apps Script. Periksa URL dan izin akses (Anyone).',
+        });
+      }
     } finally {
-      setIsLoading(false);
+      if (!isSilent) {
+        setIsLoading(false);
+      }
     }
   }, [gasUrl]);
+
+  // Auto-Sync: Automatically connect and fetch on app load & periodically every 60 seconds
+  useEffect(() => {
+    // 1. Initial auto sync on open in ANY browser or gadget
+    refreshData(true);
+
+    // 2. Periodic sync every 60 seconds
+    const interval = setInterval(() => {
+      refreshData(true);
+    }, 60000);
+
+    // 3. Sync on tab focus or when device comes online
+    const handleFocus = () => refreshData(true);
+    const handleOnline = () => refreshData(true);
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [refreshData]);
 
   // Add new leave record
   const addCuti = useCallback(

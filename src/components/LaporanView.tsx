@@ -15,6 +15,12 @@ import {
   UserCheck,
   PenTool,
   Clock,
+  Search,
+  Users,
+  Award,
+  BarChart3,
+  CalendarCheck2,
+  ArrowUpDown,
 } from 'lucide-react';
 import {
   formatDateIndo,
@@ -25,8 +31,13 @@ import {
   getCurrentWeekRange,
   isSameUnit,
 } from '../utils/dateUtils';
-import { exportCutiReportToExcel, exportTempatTugasToExcel } from '../utils/exportUtils';
-import { LogoJayaRaya, LogoKesehatan } from './OfficialLogos';
+import {
+  exportCutiReportToExcel,
+  exportTempatTugasToExcel,
+  exportRekapPegawaiCutiToExcel,
+  RekapPegawaiCutiRow,
+} from '../utils/exportUtils';
+import { LogoJayaRaya, LogoKesehatan, formatGoogleDriveImageUrl } from './OfficialLogos';
 
 interface LaporanViewProps {
   cutiList: Cuti[];
@@ -36,6 +47,7 @@ interface LaporanViewProps {
 }
 
 type LaporanType =
+  | 'rekap-pegawai-cuti'
   | 'bulanan'
   | 'rentang-tanggal'
   | 'harian'
@@ -51,12 +63,17 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
   referensi,
 }) => {
   const today = getTodayString();
-  const [reportType, setReportType] = useState<LaporanType>('bulanan');
+  const [reportType, setReportType] = useState<LaporanType>('rekap-pegawai-cuti');
   const [filterUnit, setFilterUnit] = useState<string>('');
   const [filterMonth, setFilterMonth] = useState<string>('2026-09');
   const [filterStartDate, setFilterStartDate] = useState<string>('2026-09-01');
   const [filterEndDate, setFilterEndDate] = useState<string>('2026-09-30');
   const [filterDate, setFilterDate] = useState<string>(today);
+
+  // Filter khusus untuk Laporan Total Cuti per Pegawai
+  const [filterTahunPegawai, setFilterTahunPegawai] = useState<string>('semua');
+  const [searchPegawaiQuery, setSearchPegawaiQuery] = useState<string>('');
+  const [sortByPegawai, setSortByPegawai] = useState<'hari-desc' | 'hari-asc' | 'nama-asc' | 'unit-asc'>('hari-desc');
 
   // Signatory states: auto-picked from data pegawai with manual override option
   const [showSignatoryConfig, setShowSignatoryConfig] = useState(false);
@@ -70,20 +87,19 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
   const [customLogoKemenkes, setCustomLogoKemenkes] = useState<string>(() => {
     return localStorage.getItem('simon_custom_logo_kemenkes') || '';
   });
+  const [inputDriveJaya, setInputDriveJaya] = useState<string>('');
+  const [inputDriveKemenkes, setInputDriveKemenkes] = useState<string>('');
   const [showLogoConfig, setShowLogoConfig] = useState(false);
   const [logoSaveNotice, setLogoSaveNotice] = useState(false);
 
   // 1. Ambil data Kepala Puskesmas langsung dari data pegawai (dr. Ignatius Dendy Purnama)
   const defaultKepala = useMemo(() => {
-    // Cari pegawai dengan nama mengandung "ignatius" atau "dendy"
     const byName = pegawaiList.find((p) => /ignatius|dendy/i.test(p.nama));
     if (byName) return byName;
 
-    // Cari pegawai dengan jabatan Kepala Puskesmas
     const byJabatan = pegawaiList.find((p) => /kepala\s+puskesmas/i.test(p.jabatan));
     if (byJabatan) return byJabatan;
 
-    // Fallback data resmi sesuai SIMON Pegawai
     return {
       nip: '198607192014031004',
       nama: 'dr. Ignatius Dendy Purnama',
@@ -101,48 +117,48 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
 
   // 2. Ambil data Pengelola Kepegawaian langsung dari data pegawai (Pipit Apriyani)
   const defaultPengelola = useMemo(() => {
-    // Cari pegawai dengan nama mengandung "pipit" atau "apriyani"
     const byName = pegawaiList.find((p) => /pipit|apriyani/i.test(p.nama));
     if (byName) return byName;
 
-    // Cari pegawai dengan jabatan kepegawaian / tata usaha
-    const byJabatan = pegawaiList.find((p) => /kepegawaian|tata usaha/i.test(p.jabatan));
+    const byJabatan = pegawaiList.find(
+      (p) =>
+        /kepegawaian|tata\s+usaha|administrasi/i.test(p.jabatan) ||
+        /kepegawaian/i.test(p.pangkatGolongan || '')
+    );
     if (byJabatan) return byJabatan;
 
-    // Fallback data resmi sesuai SIMON Pegawai
     return {
-      nip: '198304302024212015',
-      nama: 'Pipit Apriyani, A.Md.Kep',
+      nip: '199204122020122019',
+      nama: 'Pipit Apriyani, S.Kom',
       jabatan: 'Pengelola Kepegawaian',
-      pangkatGolongan: 'VII (KHUSUS PPPK)',
+      pangkatGolongan: 'III/a (Penata Muda)',
       tempatTugas: 'Puskesmas Kepulauan Seribu Selatan',
       puskesmasPustu: 'Puskesmas Kepulauan Seribu Selatan',
-      statusKepegawaian: 'PPPK' as const,
+      statusKepegawaian: 'PNS' as const,
       jenisKelamin: 'Perempuan' as const,
-      nomorHp: '081288919909',
+      nomorHp: '081298765432',
       statusAktif: 'Aktif' as const,
-      no: 25,
+      no: 2,
     };
   }, [pegawaiList]);
 
-  // Pegawai terpilih untuk penandatangan
   const kepalaPuskesmas = useMemo(() => {
     if (selectedKepalaNip) {
-      const match = pegawaiList.find((p) => p.nip === selectedKepalaNip);
-      if (match) return match;
+      const found = pegawaiList.find((p) => p.nip === selectedKepalaNip);
+      if (found) return found;
     }
     return defaultKepala;
   }, [selectedKepalaNip, pegawaiList, defaultKepala]);
 
   const pengelolaKepegawaian = useMemo(() => {
     if (selectedPengelolaNip) {
-      const match = pegawaiList.find((p) => p.nip === selectedPengelolaNip);
-      if (match) return match;
+      const found = pegawaiList.find((p) => p.nip === selectedPengelolaNip);
+      if (found) return found;
     }
     return defaultPengelola;
   }, [selectedPengelolaNip, pegawaiList, defaultPengelola]);
 
-  // 3. Menghitung rentang tanggal periode cuti yang aktif ("tanggal berapa sampai berapa")
+  // Kalkulasi Periode Terpilih
   const { periodeStart, periodeEnd, periodeDeskripsi } = useMemo(() => {
     if (reportType === 'harian') {
       return {
@@ -162,31 +178,170 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
     }
 
     if (reportType === 'rentang-tanggal') {
-      const s = filterStartDate || '2026-09-01';
-      const e = filterEndDate || '2026-09-30';
       return {
-        periodeStart: s,
-        periodeEnd: e,
-        periodeDeskripsi: `${formatDateIndo(s)} s/d ${formatDateIndo(e)}`,
+        periodeStart: filterStartDate,
+        periodeEnd: filterEndDate,
+        periodeDeskripsi: `${formatDateIndo(filterStartDate)} s/d ${formatDateIndo(filterEndDate)}`,
       };
     }
 
-    // Default: 'bulanan', 'tempat-tugas', 'jabatan', 'jenis-cuti'
-    const ym = filterMonth.split('-');
-    const year = parseInt(ym[0], 10) || 2026;
-    const month = parseInt(ym[1], 10) || 9;
-    const firstDay = `${filterMonth}-01`;
-    const lastDateNum = new Date(year, month, 0).getDate();
-    const lastDay = `${filterMonth}-${String(lastDateNum).padStart(2, '0')}`;
+    if (reportType === 'rekap-pegawai-cuti') {
+      return {
+        periodeStart: filterTahunPegawai === 'semua' ? '2024-01-01' : `${filterTahunPegawai}-01-01`,
+        periodeEnd: filterTahunPegawai === 'semua' ? today : `${filterTahunPegawai}-12-31`,
+        periodeDeskripsi: filterTahunPegawai === 'semua' ? 'Seluruh Waktu (Akumulasi)' : `Tahun ${filterTahunPegawai}`,
+      };
+    }
 
+    // Default: Bulanan
+    const [year, month] = filterMonth.split('-').map(Number);
+    const lastDay = new Date(year, month, 0).getDate();
+    const mm = String(month).padStart(2, '0');
+    const start = `${year}-${mm}-01`;
+    const end = `${year}-${mm}-${String(lastDay).padStart(2, '0')}`;
+    const monthNames = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    ];
     return {
-      periodeStart: firstDay,
-      periodeEnd: lastDay,
-      periodeDeskripsi: `${formatDateIndo(firstDay)} s/d ${formatDateIndo(lastDay)}`,
+      periodeStart: start,
+      periodeEnd: end,
+      periodeDeskripsi: `Bulan ${monthNames[month - 1]} ${year} (1 s/d ${lastDay} ${monthNames[month - 1]} ${year})`,
     };
-  }, [reportType, filterMonth, filterDate, filterStartDate, filterEndDate]);
+  }, [reportType, filterMonth, filterStartDate, filterEndDate, filterDate, filterTahunPegawai, today]);
 
-  // Handle uploading custom logo for Jaya Raya
+  // Perhitungan Akumulasi Cuti per Pegawai
+  const rekapPegawaiData: RekapPegawaiCutiRow[] = useMemo(() => {
+    const list = pegawaiList
+      .filter((p) => {
+        if (filterUnit && !isSameUnit(p.tempatTugas, filterUnit)) return false;
+        if (searchPegawaiQuery.trim()) {
+          const q = searchPegawaiQuery.toLowerCase();
+          const matchNama = p.nama.toLowerCase().includes(q);
+          const matchNip = p.nip.toLowerCase().includes(q);
+          const matchJabatan = p.jabatan.toLowerCase().includes(q);
+          if (!matchNama && !matchNip && !matchJabatan) return false;
+        }
+        return true;
+      })
+      .map((p, idx) => {
+        // Cari semua permohonan cuti pegawai ini
+        const employeeLeaves = cutiList.filter((c) => {
+          const matchNip = c.nip && p.nip && c.nip.trim() === p.nip.trim();
+          const matchName = c.nama && p.nama && c.nama.toLowerCase().trim() === p.nama.toLowerCase().trim();
+          if (!matchNip && !matchName) return false;
+          if (filterTahunPegawai && filterTahunPegawai !== 'semua') {
+            if (!c.tanggalMulai.startsWith(filterTahunPegawai)) return false;
+          }
+          return true;
+        });
+
+        // Filter hanya cuti yang telah disetujui
+        const approvedLeaves = employeeLeaves.filter((c) => c.statusPersetujuan === 'Disetujui');
+
+        let totalHariCuti = 0;
+        let cutiTahunanHari = 0;
+        let cutiSakitHari = 0;
+        let cutiAlasanPentingHari = 0;
+        let cutiMelahirkanHari = 0;
+        let cutiBesarHari = 0;
+        let cutiLainnyaHari = 0;
+
+        approvedLeaves.forEach((c) => {
+          const days = Number(c.jumlahHari) || 0;
+          totalHariCuti += days;
+          const jenis = (c.jenisCuti || '').toLowerCase();
+          if (jenis.includes('tahunan')) {
+            cutiTahunanHari += days;
+          } else if (jenis.includes('sakit')) {
+            cutiSakitHari += days;
+          } else if (jenis.includes('alasan penting')) {
+            cutiAlasanPentingHari += days;
+          } else if (jenis.includes('melahirkan') || jenis.includes('bersalin')) {
+            cutiMelahirkanHari += days;
+          } else if (jenis.includes('besar')) {
+            cutiBesarHari += days;
+          } else {
+            cutiLainnyaHari += days;
+          }
+        });
+
+        // Kuota cuti tahunan resmi ASN adalah 12 hari kerja per tahun
+        const sisaCutiTahunan = Math.max(0, 12 - cutiTahunanHari);
+
+        // Riwayat cuti terakhir yang diambil
+        const sorted = [...employeeLeaves].sort((a, b) => b.tanggalMulai.localeCompare(a.tanggalMulai));
+        const lastLeave = sorted[0];
+        const cutiTerakhir = lastLeave
+          ? `${formatDateShortIndo(lastLeave.tanggalMulai)} (${lastLeave.jenisCuti}, ${lastLeave.jumlahHari} hari)`
+          : '-';
+
+        return {
+          no: idx + 1,
+          nip: p.nip,
+          nama: p.nama,
+          pangkatGolongan: p.pangkatGolongan,
+          jabatan: p.jabatan,
+          tempatTugas: p.tempatTugas,
+          statusKepegawaian: p.statusKepegawaian,
+          frekuensiPengajuan: employeeLeaves.length,
+          totalHariCuti,
+          cutiTahunanHari,
+          cutiSakitHari,
+          cutiAlasanPentingHari,
+          cutiMelahirkanHari,
+          cutiBesarHari,
+          cutiLainnyaHari,
+          sisaCutiTahunan,
+          cutiTerakhir,
+        };
+      });
+
+    // Urutkan data sesuai preferensi pengguna
+    list.sort((a, b) => {
+      if (sortByPegawai === 'hari-desc') return b.totalHariCuti - a.totalHariCuti;
+      if (sortByPegawai === 'hari-asc') return a.totalHariCuti - b.totalHariCuti;
+      if (sortByPegawai === 'nama-asc') return a.nama.localeCompare(b.nama);
+      if (sortByPegawai === 'unit-asc') return a.tempatTugas.localeCompare(b.tempatTugas);
+      return 0;
+    });
+
+    return list.map((item, index) => ({
+      ...item,
+      no: index + 1,
+    }));
+  }, [pegawaiList, cutiList, filterUnit, searchPegawaiQuery, filterTahunPegawai, sortByPegawai]);
+
+  // Statistik Ringkas Rekap Cuti Pegawai
+  const rekapPegawaiStats = useMemo(() => {
+    const totalPegawai = rekapPegawaiData.length;
+    const pegawaiPernahCuti = rekapPegawaiData.filter((r) => r.totalHariCuti > 0).length;
+    const pegawaiBelumCuti = totalPegawai - pegawaiPernahCuti;
+    const totalHariAkumulasi = rekapPegawaiData.reduce((acc, curr) => acc + curr.totalHariCuti, 0);
+    const rataRataHari = totalPegawai > 0 ? (totalHariAkumulasi / totalPegawai).toFixed(1) : '0';
+    return {
+      totalPegawai,
+      pegawaiPernahCuti,
+      pegawaiBelumCuti,
+      totalHariAkumulasi,
+      rataRataHari,
+    };
+  }, [rekapPegawaiData]);
+
+  // Filter cuti umum (harian, mingguan, bulanan, dll.)
+  const reportData = useMemo(() => {
+    return cutiList.filter((c) => {
+      if (filterUnit && !isSameUnit(c.tempatTugas, filterUnit)) return false;
+
+      if (reportType === 'harian') {
+        return isDateInRange(filterDate, c.tanggalMulai, c.tanggalSelesai);
+      }
+
+      return c.tanggalMulai <= periodeEnd && c.tanggalSelesai >= periodeStart;
+    });
+  }, [cutiList, filterUnit, reportType, filterDate, periodeStart, periodeEnd]);
+
+  // Handlers untuk Logo
   const handleUploadLogoJaya = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -201,7 +356,6 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
     }
   };
 
-  // Handle uploading custom logo for Kesehatan
   const handleUploadLogoKemenkes = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -216,9 +370,29 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
     }
   };
 
+  const handleApplyDriveJaya = () => {
+    if (inputDriveJaya.trim()) {
+      const formatted = formatGoogleDriveImageUrl(inputDriveJaya.trim()) || inputDriveJaya.trim();
+      setCustomLogoJaya(formatted);
+      localStorage.setItem('simon_custom_logo_jaya', formatted);
+      showSaveToast();
+    }
+  };
+
+  const handleApplyDriveKemenkes = () => {
+    if (inputDriveKemenkes.trim()) {
+      const formatted = formatGoogleDriveImageUrl(inputDriveKemenkes.trim()) || inputDriveKemenkes.trim();
+      setCustomLogoKemenkes(formatted);
+      localStorage.setItem('simon_custom_logo_kemenkes', formatted);
+      showSaveToast();
+    }
+  };
+
   const handleResetLogos = () => {
     setCustomLogoJaya('');
     setCustomLogoKemenkes('');
+    setInputDriveJaya('');
+    setInputDriveKemenkes('');
     localStorage.removeItem('simon_custom_logo_jaya');
     localStorage.removeItem('simon_custom_logo_kemenkes');
     showSaveToast();
@@ -229,27 +403,17 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
     setTimeout(() => setLogoSaveNotice(false), 3000);
   };
 
-  // Filter cuti berdasarkan unit dan periode aktif
-  const reportData = useMemo(() => {
-    return cutiList.filter((c) => {
-      if (filterUnit && !isSameUnit(c.tempatTugas, filterUnit)) return false;
-
-      if (reportType === 'harian') {
-        return isDateInRange(filterDate, c.tanggalMulai, c.tanggalSelesai);
-      }
-
-      // Bulanan / Rentang Tanggal / Mingguan:
-      // Tampilkan cuti yang tanggalnya beririsan dengan periode yang dipilih
-      return c.tanggalMulai <= periodeEnd && c.tanggalSelesai >= periodeStart;
-    });
-  }, [cutiList, filterUnit, reportType, filterDate, periodeStart, periodeEnd]);
-
   const handlePrint = () => {
     window.print();
   };
 
   const handleExportExcel = () => {
-    if (reportType === 'tempat-tugas') {
+    if (reportType === 'rekap-pegawai-cuti') {
+      exportRekapPegawaiCutiToExcel(
+        rekapPegawaiData,
+        filterTahunPegawai === 'semua' ? 'Semua Waktu' : `Tahun ${filterTahunPegawai}`
+      );
+    } else if (reportType === 'tempat-tugas') {
       exportTempatTugasToExcel(tempatTugasSummary);
     } else {
       exportCutiReportToExcel(reportData, `Laporan_${reportType}_${periodeStart}_sd_${periodeEnd}`);
@@ -258,6 +422,10 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
 
   const getReportTitle = () => {
     switch (reportType) {
+      case 'rekap-pegawai-cuti':
+        return `LAPORAN REKAPITULASI TOTAL HARI CUTI YANG SUDAH DIAMBIL PER PEGAWAI ${
+          filterTahunPegawai !== 'semua' ? `TAHUN ${filterTahunPegawai}` : '(AKUMULASI SELURUH WAKTU)'
+        }`;
       case 'harian':
         return 'LAPORAN CUTI HARIAN PEGAWAI';
       case 'mingguan':
@@ -286,7 +454,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
               <span>Pusat Laporan & Ekspor Data Cuti</span>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Cetak dokumen rekapitulasi resmi Puskesmas Kepulauan Seribu Selatan dengan periode cuti lengkap dan tanda tangan pejabat.
+              Cetak dokumen rekapitulasi resmi Puskesmas Kepulauan Seribu Selatan dengan kop logo resmi dan tanda tangan pejabat.
             </p>
           </div>
 
@@ -302,6 +470,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
             <button
               onClick={() => setShowLogoConfig(!showLogoConfig)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold shadow-2xs transition"
+              title="Kustomisasi Logo Kop Surat Jaya Raya dan Kesehatan"
             >
               <ImageIcon className="w-3.5 h-3.5 text-teal-600" />
               {showLogoConfig ? 'Tutup Pengaturan Logo' : 'Pengaturan Kop Logo'}
@@ -323,13 +492,83 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
           </div>
         </div>
 
-        {/* Pejabat Penandatangan Configuration Drawer */}
+        {/* Quick Report Type Selector Bar */}
+        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
+          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mr-1">
+            Pilihan Laporan:
+          </span>
+          <button
+            onClick={() => setReportType('rekap-pegawai-cuti')}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs ${
+              reportType === 'rekap-pegawai-cuti'
+                ? 'bg-teal-700 text-white border border-teal-800 ring-2 ring-teal-600/30'
+                : 'bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>Total Cuti per Pegawai</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 font-mono">Baru</span>
+          </button>
+
+          <button
+            onClick={() => setReportType('bulanan')}
+            className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+              reportType === 'bulanan'
+                ? 'bg-slate-900 text-white font-semibold'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            Bulanan
+          </button>
+          <button
+            onClick={() => setReportType('tempat-tugas')}
+            className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+              reportType === 'tempat-tugas'
+                ? 'bg-slate-900 text-white font-semibold'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            Per Tempat Tugas
+          </button>
+          <button
+            onClick={() => setReportType('rentang-tanggal')}
+            className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+              reportType === 'rentang-tanggal'
+                ? 'bg-slate-900 text-white font-semibold'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            Rentang Tanggal
+          </button>
+          <button
+            onClick={() => setReportType('harian')}
+            className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+              reportType === 'harian'
+                ? 'bg-slate-900 text-white font-semibold'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            Harian
+          </button>
+          <button
+            onClick={() => setReportType('mingguan')}
+            className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+              reportType === 'mingguan'
+                ? 'bg-slate-900 text-white font-semibold'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            Mingguan
+          </button>
+        </div>
+
+        {/* Pejabat Penandatangan Drawer */}
         {showSignatoryConfig && (
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-3 transition">
             <div className="flex items-center justify-between">
               <h4 className="font-bold text-slate-900 flex items-center gap-1.5">
                 <UserCheck className="w-4 h-4 text-teal-600" />
-                Pejabat Penandatangan Dokumen Laporan Cuti (Diambil dari Data Pegawai)
+                Pejabat Penandatangan Dokumen Laporan Cuti (Diambil Otomatis dari Data Pegawai)
               </h4>
               <button
                 onClick={() => {
@@ -338,12 +577,11 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
                 }}
                 className="text-[11px] text-teal-700 hover:text-teal-800 font-semibold underline"
               >
-                Reset ke Default Data Pegawai
+                Reset ke Default Pegawai
               </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Kepala Puskesmas Selection */}
               <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-800 text-[11px]">Kepala Puskesmas:</span>
@@ -362,19 +600,17 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
                   {pegawaiList
                     .filter((p) => p.nip !== defaultKepala.nip)
                     .map((p) => (
-                      <option key={`kepala-${p.nip}`} value={p.nip}>
+                      <option key={p.nip} value={p.nip}>
                         {p.nama} - {p.jabatan} (NIP. {p.nip})
                       </option>
                     ))}
                 </select>
                 <div className="text-[11px] text-slate-600">
-                  Nama di Laporan:{' '}
-                  <strong className="text-slate-900 underline">{kepalaPuskesmas.nama}</strong> · NIP:{' '}
+                  Nama di Laporan: <strong className="text-slate-900 underline">{kepalaPuskesmas.nama}</strong> · NIP:{' '}
                   <span className="font-mono">{kepalaPuskesmas.nip}</span>
                 </div>
               </div>
 
-              {/* Pengelola Kepegawaian Selection */}
               <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-800 text-[11px]">Pengelola Kepegawaian:</span>
@@ -393,14 +629,13 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
                   {pegawaiList
                     .filter((p) => p.nip !== defaultPengelola.nip)
                     .map((p) => (
-                      <option key={`pengelola-${p.nip}`} value={p.nip}>
+                      <option key={p.nip} value={p.nip}>
                         {p.nama} - {p.jabatan} (NIP. {p.nip})
                       </option>
                     ))}
                 </select>
                 <div className="text-[11px] text-slate-600">
-                  Nama di Laporan:{' '}
-                  <strong className="text-slate-900 underline">{pengelolaKepegawaian.nama}</strong> · NIP:{' '}
+                  Nama di Laporan: <strong className="text-slate-900 underline">{pengelolaKepegawaian.nama}</strong> · NIP:{' '}
                   <span className="font-mono">{pengelolaKepegawaian.nip}</span>
                 </div>
               </div>
@@ -410,11 +645,11 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
 
         {/* Logo Configuration Drawer */}
         {showLogoConfig && (
-          <div className="p-4 rounded-xl bg-teal-50/60 border border-teal-200/80 text-xs space-y-3 transition">
+          <div className="p-4 rounded-xl bg-teal-50/70 border border-teal-200/90 text-xs space-y-3 transition">
             <div className="flex items-center justify-between">
               <h4 className="font-bold text-teal-950 flex items-center gap-1.5">
                 <ImageIcon className="w-4 h-4 text-teal-600" />
-                Kustomisasi Logo Kop Surat Resmi (PDF & Cetak)
+                Pengaturan Logo Kop Surat Resmi (Logo Jaya Raya DKI & Logo Kesehatan)
               </h4>
               <div className="flex items-center gap-2">
                 {logoSaveNotice && (
@@ -425,50 +660,94 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
                 {(customLogoJaya || customLogoKemenkes) && (
                   <button
                     onClick={handleResetLogos}
-                    className="inline-flex items-center gap-1 text-[11px] text-rose-600 hover:text-rose-700 font-semibold underline"
+                    className="inline-flex items-center gap-1 text-[11px] text-rose-600 hover:text-rose-700 font-semibold underline cursor-pointer"
                   >
-                    <RotateCcw className="w-3 h-3" /> Reset ke Logo Bawaan
+                    <RotateCcw className="w-3 h-3" /> Reset ke Logo Standar
                   </button>
                 )}
               </div>
             </div>
 
-            <p className="text-[11px] text-teal-800 leading-relaxed">
-              Kop surat menggunakan <strong>Logo Jaya Raya (DKI Jakarta)</strong> di sisi kiri dan <strong>Logo Kesehatan (Kemenkes / Puskesmas)</strong> di sisi kanan. Anda dapat mengunggah file logo instansi dari perangkat Anda.
+            <p className="text-[11px] text-teal-900 leading-relaxed">
+              Kop surat menggunakan <strong>Logo Jaya Raya DKI Jakarta</strong> di sisi kiri dan <strong>Logo Kesehatan (Kemenkes / Puskesmas)</strong> di sisi kanan. Anda dapat mengunggah file dari perangkat atau menempelkan tautan Google Drive.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
               {/* Logo Jaya Raya Box */}
-              <div className="p-3 bg-white rounded-lg border border-teal-200 flex items-center gap-3">
-                <div className="w-16 h-16 shrink-0 bg-slate-50 border border-slate-200 rounded p-1 flex items-center justify-center">
-                  <LogoJayaRaya customSrc={customLogoJaya || undefined} className="w-14 h-14" />
+              <div className="p-3 bg-white rounded-lg border border-teal-200 space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-14 h-16 shrink-0 bg-slate-50 border border-slate-200 rounded p-1 flex items-center justify-center">
+                    <LogoJayaRaya customSrc={customLogoJaya || undefined} className="w-12 h-14" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <span className="font-bold text-slate-800 block text-[11px]">Logo Jaya Raya (Kiri)</span>
+                    <span className="text-[10px] text-slate-500 block">
+                      {customLogoJaya ? 'Kustom aktif' : 'Vektor resmi DKI Jakarta'}
+                    </span>
+                    <label className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-teal-50 border border-teal-300 text-teal-800 text-[10px] font-semibold hover:bg-teal-100 cursor-pointer">
+                      <Upload className="w-3 h-3" /> Upload File
+                      <input type="file" accept="image/*" onChange={handleUploadLogoJaya} className="hidden" />
+                    </label>
+                  </div>
                 </div>
-                <div className="flex-1 space-y-1">
-                  <span className="font-bold text-slate-800 block text-[11px]">Logo Jaya Raya (Sisi Kiri)</span>
-                  <span className="text-[10px] text-slate-500 block">
-                    {customLogoJaya ? 'Menggunakan gambar kustom' : 'Menggunakan logo vektor resmi DKI'}
-                  </span>
-                  <label className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded text-[11px] font-semibold cursor-pointer transition">
-                    <Upload className="w-3 h-3" /> Ganti Gambar
-                    <input type="file" accept="image/*" onChange={handleUploadLogoJaya} className="hidden" />
+                <div className="pt-2 border-t border-slate-100">
+                  <label className="block text-[10px] text-slate-500 font-semibold mb-1">
+                    Atau Link Google Drive Logo Jaya Raya:
                   </label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="url"
+                      placeholder="https://drive.google.com/file/d/..."
+                      value={inputDriveJaya}
+                      onChange={(e) => setInputDriveJaya(e.target.value)}
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-[11px] text-slate-800 focus:outline-hidden focus:border-teal-600"
+                    />
+                    <button
+                      onClick={handleApplyDriveJaya}
+                      className="px-2.5 py-1 bg-teal-700 text-white rounded text-[11px] font-semibold hover:bg-teal-800 cursor-pointer shrink-0"
+                    >
+                      Terapkan
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {/* Logo Kesehatan Box */}
-              <div className="p-3 bg-white rounded-lg border border-teal-200 flex items-center gap-3">
-                <div className="w-16 h-16 shrink-0 bg-slate-50 border border-slate-200 rounded p-1 flex items-center justify-center">
-                  <LogoKesehatan customSrc={customLogoKemenkes || undefined} className="w-14 h-14" />
+              <div className="p-3 bg-white rounded-lg border border-teal-200 space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-14 h-16 shrink-0 bg-slate-50 border border-slate-200 rounded p-1 flex items-center justify-center">
+                    <LogoKesehatan customSrc={customLogoKemenkes || undefined} className="w-12 h-14" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <span className="font-bold text-slate-800 block text-[11px]">Logo Kesehatan (Kanan)</span>
+                    <span className="text-[10px] text-slate-500 block">
+                      {customLogoKemenkes ? 'Kustom aktif' : 'Vektor resmi Puskesmas Indonesia'}
+                    </span>
+                    <label className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-teal-50 border border-teal-300 text-teal-800 text-[10px] font-semibold hover:bg-teal-100 cursor-pointer">
+                      <Upload className="w-3 h-3" /> Upload File
+                      <input type="file" accept="image/*" onChange={handleUploadLogoKemenkes} className="hidden" />
+                    </label>
+                  </div>
                 </div>
-                <div className="flex-1 space-y-1">
-                  <span className="font-bold text-slate-800 block text-[11px]">Logo Kesehatan (Sisi Kanan)</span>
-                  <span className="text-[10px] text-slate-500 block">
-                    {customLogoKemenkes ? 'Menggunakan gambar kustom' : 'Menggunakan logo vektor resmi Kemenkes'}
-                  </span>
-                  <label className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded text-[11px] font-semibold cursor-pointer transition">
-                    <Upload className="w-3 h-3" /> Ganti Gambar
-                    <input type="file" accept="image/*" onChange={handleUploadLogoKemenkes} className="hidden" />
+                <div className="pt-2 border-t border-slate-100">
+                  <label className="block text-[10px] text-slate-500 font-semibold mb-1">
+                    Atau Link Google Drive Logo Kesehatan:
                   </label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="url"
+                      placeholder="https://drive.google.com/file/d/..."
+                      value={inputDriveKemenkes}
+                      onChange={(e) => setInputDriveKemenkes(e.target.value)}
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-[11px] text-slate-800 focus:outline-hidden focus:border-teal-600"
+                    />
+                    <button
+                      onClick={handleApplyDriveKemenkes}
+                      className="px-2.5 py-1 bg-teal-700 text-white rounded text-[11px] font-semibold hover:bg-teal-800 cursor-pointer shrink-0"
+                    >
+                      Terapkan
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -479,13 +758,14 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-100 text-xs">
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-              Jenis Laporan
+              Pilih Jenis Laporan
             </label>
             <select
               value={reportType}
               onChange={(e) => setReportType(e.target.value as LaporanType)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-md py-1.5 px-2.5 text-xs text-slate-800 focus:outline-hidden focus:border-teal-600 font-medium"
+              className="w-full bg-slate-50 border border-slate-200 rounded-md py-1.5 px-2.5 text-xs text-slate-800 focus:outline-hidden focus:border-teal-600 font-semibold"
             >
+              <option value="rekap-pegawai-cuti">⭐ Rekap Total Cuti per Pegawai (Akumulasi)</option>
               <option value="bulanan">Laporan Cuti Bulanan</option>
               <option value="rentang-tanggal">Laporan Rentang Tanggal (Kustom)</option>
               <option value="harian">Laporan Cuti Harian</option>
@@ -514,8 +794,42 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
             </select>
           </div>
 
-          {/* Conditional Date Pickers based on reportType */}
-          {reportType === 'bulanan' || reportType === 'tempat-tugas' || reportType === 'jabatan' || reportType === 'jenis-cuti' ? (
+          {/* Conditional Filters depending on reportType */}
+          {reportType === 'rekap-pegawai-cuti' ? (
+            <>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                  Periode Tahun Cuti
+                </label>
+                <select
+                  value={filterTahunPegawai}
+                  onChange={(e) => setFilterTahunPegawai(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-md py-1.5 px-2.5 text-xs text-slate-800 focus:outline-hidden focus:border-teal-600 font-medium"
+                >
+                  <option value="semua">Semua Waktu (Akumulasi Historis)</option>
+                  <option value="2026">Tahun 2026 (Tahun Berjalan)</option>
+                  <option value="2025">Tahun 2025</option>
+                  <option value="2024">Tahun 2024</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                  Urutkan Berdasarkan
+                </label>
+                <select
+                  value={sortByPegawai}
+                  onChange={(e) => setSortByPegawai(e.target.value as any)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-md py-1.5 px-2.5 text-xs text-slate-800 focus:outline-hidden focus:border-teal-600 font-medium"
+                >
+                  <option value="hari-desc">Total Hari Cuti: Terbanyak ke Tersedikit</option>
+                  <option value="hari-asc">Total Hari Cuti: Tersedikit ke Terbanyak</option>
+                  <option value="nama-asc">Nama Pegawai (A ke Z)</option>
+                  <option value="unit-asc">Tempat Tugas</option>
+                </select>
+              </div>
+            </>
+          ) : reportType === 'bulanan' || reportType === 'tempat-tugas' || reportType === 'jabatan' || reportType === 'jenis-cuti' ? (
             <div className="lg:col-span-2">
               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
                 Bulan Periode Cuti
@@ -572,20 +886,51 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
           )}
         </div>
 
-        {/* Active Period Information Strip */}
+        {/* Search input for rekap-pegawai-cuti */}
+        {reportType === 'rekap-pegawai-cuti' && (
+          <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={searchPegawaiQuery}
+                onChange={(e) => setSearchPegawaiQuery(e.target.value)}
+                placeholder="Cari nama pegawai, NIP, atau jabatan..."
+                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-hidden focus:border-teal-600 placeholder:text-slate-400"
+              />
+            </div>
+            {searchPegawaiQuery && (
+              <button
+                onClick={() => setSearchPegawaiQuery('')}
+                className="text-[11px] text-teal-700 hover:text-teal-800 font-semibold underline shrink-0"
+              >
+                Hapus Pencarian
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Active Period / Stat Information Strip */}
         <div className="p-2.5 rounded-lg bg-teal-50/70 border border-teal-200 text-xs flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-teal-700" />
-            <span className="text-teal-900 font-semibold">Periode Cuti Terpilih:</span>
+            <span className="text-teal-900 font-semibold">Periode Laporan:</span>
             <span className="font-bold text-teal-950 font-mono bg-white px-2 py-0.5 rounded border border-teal-300">
               {periodeDeskripsi}
             </span>
-            <span className="text-[11px] text-teal-700 font-medium">
-              ({calculateDaysBetween(periodeStart, periodeEnd)} hari kalender)
-            </span>
           </div>
+
           <div className="text-teal-900 font-medium">
-            Total Ditemukan: <strong className="text-teal-950">{reportData.length}</strong> permohonan cuti
+            {reportType === 'rekap-pegawai-cuti' ? (
+              <span>
+                Total Data: <strong className="text-teal-950">{rekapPegawaiData.length}</strong> pegawai · Total Cuti Diambil:{' '}
+                <strong className="text-teal-950 font-bold">{rekapPegawaiStats.totalHariAkumulasi} Hari</strong>
+              </span>
+            ) : (
+              <span>
+                Total Ditemukan: <strong className="text-teal-950">{reportData.length}</strong> permohonan cuti
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -631,25 +976,24 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
             </div>
           </div>
 
-          {/* Official Dual Line Divider (Garis Ganda Kop Surat Resmi) */}
+          {/* Official Dual Line Divider */}
           <div className="mt-3">
             <div className="w-full h-[2.5px] bg-black"></div>
             <div className="w-full h-[1px] bg-black mt-[1.5px]"></div>
           </div>
         </div>
 
-        {/* Report Document Title & Periode Cuti (Tanggal berapa sampai berapa) */}
+        {/* Report Document Title & Subtitle */}
         <div className="text-center mb-6 space-y-2">
           <h3 className="text-sm sm:text-base md:text-lg font-black text-slate-900 uppercase underline decoration-2 underline-offset-4 tracking-tight">
             {getReportTitle()}
           </h3>
 
-          {/* PERIODE CUTI DITAMPILKAN SECARA JELAS & EKSPLISIT */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-teal-50 border border-teal-300 text-teal-950 font-medium text-xs sm:text-sm print:border-black print:bg-white">
               <Calendar className="w-4 h-4 text-teal-700 shrink-0 no-print" />
               <span>
-                <strong className="uppercase tracking-wider">PERIODE CUTI:</strong>{' '}
+                <strong className="uppercase tracking-wider">PERIODE LAPORAN:</strong>{' '}
                 <span className="font-bold underline decoration-teal-600 font-mono text-sm print:decoration-black">
                   {periodeDeskripsi}
                 </span>
@@ -667,8 +1011,160 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
           </p>
         </div>
 
-        {/* Report Content Table */}
-        {reportType === 'tempat-tugas' ? (
+        {/* Summary Metric Cards for rekap-pegawai-cuti (No print) */}
+        {reportType === 'rekap-pegawai-cuti' && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 no-print">
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-slate-600" />
+                <span>Total Pegawai</span>
+              </div>
+              <div className="text-lg font-black text-slate-900 mt-1 font-mono">
+                {rekapPegawaiStats.totalPegawai} <span className="text-xs font-normal text-slate-500">Orang</span>
+              </div>
+            </div>
+
+            <div className="p-3 bg-teal-50/60 rounded-lg border border-teal-200">
+              <div className="text-[11px] font-medium text-teal-800 flex items-center gap-1.5">
+                <CalendarCheck2 className="w-3.5 h-3.5 text-teal-600" />
+                <span>Pernah Cuti</span>
+              </div>
+              <div className="text-lg font-black text-teal-900 mt-1 font-mono">
+                {rekapPegawaiStats.pegawaiPernahCuti} <span className="text-xs font-normal text-teal-700">Orang</span>
+              </div>
+            </div>
+
+            <div className="p-3 bg-amber-50/60 rounded-lg border border-amber-200">
+              <div className="text-[11px] font-medium text-amber-800 flex items-center gap-1.5">
+                <BarChart3 className="w-3.5 h-3.5 text-amber-600" />
+                <span>Akumulasi Hari Cuti</span>
+              </div>
+              <div className="text-lg font-black text-amber-950 mt-1 font-mono">
+                {rekapPegawaiStats.totalHariAkumulasi} <span className="text-xs font-normal text-amber-800">Hari</span>
+              </div>
+            </div>
+
+            <div className="p-3 bg-emerald-50/60 rounded-lg border border-emerald-200">
+              <div className="text-[11px] font-medium text-emerald-800 flex items-center gap-1.5">
+                <Award className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Rata-rata Cuti</span>
+              </div>
+              <div className="text-lg font-black text-emerald-950 mt-1 font-mono">
+                {rekapPegawaiStats.rataRataHari} <span className="text-xs font-normal text-emerald-800">Hari/Pegawai</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Content Table by Report Type */}
+        {reportType === 'rekap-pegawai-cuti' ? (
+          /* TABEL REKAPITULASI TOTAL HARI CUTI YANG PERNAH DIAMBIL PER PEGAWAI */
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left border border-slate-300">
+              <thead className="bg-slate-100 font-bold uppercase text-[10px]">
+                <tr>
+                  <th className="p-2 border border-slate-300 text-center w-8">No</th>
+                  <th className="p-2 border border-slate-300">NIP & Nama Pegawai</th>
+                  <th className="p-2 border border-slate-300">Jabatan</th>
+                  <th className="p-2 border border-slate-300">Tempat Tugas</th>
+                  <th className="p-2 border border-slate-300 text-center">Status</th>
+                  <th className="p-2 border border-slate-300 text-center">Pengajuan</th>
+                  <th className="p-2 border border-slate-300 text-center bg-teal-100/70 font-black">
+                    Total Cuti Diambil
+                  </th>
+                  <th className="p-2 border border-slate-300 text-center">Tahunan</th>
+                  <th className="p-2 border border-slate-300 text-center bg-emerald-50 font-bold text-emerald-800">
+                    Sisa Tahunan
+                  </th>
+                  <th className="p-2 border border-slate-300 text-center">Sakit</th>
+                  <th className="p-2 border border-slate-300 text-center">Alasan Penting</th>
+                  <th className="p-2 border border-slate-300 text-center">Lainnya</th>
+                  <th className="p-2 border border-slate-300">Cuti Terakhir</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rekapPegawaiData.length === 0 ? (
+                  <tr>
+                    <td colSpan={13} className="p-8 text-center text-slate-500 italic">
+                      Tidak ditemukan data pegawai yang sesuai dengan kriteria filter.
+                    </td>
+                  </tr>
+                ) : (
+                  rekapPegawaiData.map((row) => (
+                    <tr
+                      key={row.nip || row.nama}
+                      className={`border-b border-slate-200 hover:bg-slate-50 transition ${
+                        row.totalHariCuti > 0 ? '' : 'bg-slate-50/50'
+                      }`}
+                    >
+                      <td className="p-2 border border-slate-300 text-center font-mono font-medium">
+                        {row.no}
+                      </td>
+                      <td className="p-2 border border-slate-300">
+                        <div className="font-bold text-slate-900">{row.nama}</div>
+                        <div className="text-[10px] text-slate-500 font-mono">NIP. {row.nip || '-'}</div>
+                      </td>
+                      <td className="p-2 border border-slate-300">
+                        <div>{row.jabatan}</div>
+                        {row.pangkatGolongan && row.pangkatGolongan !== '-' && (
+                          <div className="text-[10px] text-slate-400">{row.pangkatGolongan}</div>
+                        )}
+                      </td>
+                      <td className="p-2 border border-slate-300 font-medium text-slate-700">
+                        {row.tempatTugas}
+                      </td>
+                      <td className="p-2 border border-slate-300 text-center">
+                        <span
+                          className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                            row.statusKepegawaian === 'PNS'
+                              ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                              : row.statusKepegawaian === 'PPPK'
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                              : 'bg-slate-100 text-slate-700'
+                          }`}
+                        >
+                          {row.statusKepegawaian}
+                        </span>
+                      </td>
+                      <td className="p-2 border border-slate-300 text-center font-mono text-slate-600">
+                        {row.frekuensiPengajuan}x
+                      </td>
+                      <td className="p-2 border border-slate-300 text-center bg-teal-50/80">
+                        <span
+                          className={`inline-block px-2.5 py-1 rounded font-mono font-black text-xs ${
+                            row.totalHariCuti > 0
+                              ? 'bg-teal-700 text-white shadow-2xs'
+                              : 'bg-slate-200 text-slate-500 font-medium'
+                          }`}
+                        >
+                          {row.totalHariCuti} Hari
+                        </span>
+                      </td>
+                      <td className="p-2 border border-slate-300 text-center font-mono font-semibold">
+                        {row.cutiTahunanHari} hr
+                      </td>
+                      <td className="p-2 border border-slate-300 text-center bg-emerald-50/50 font-mono font-bold text-emerald-800">
+                        {row.sisaCutiTahunan} hr
+                      </td>
+                      <td className="p-2 border border-slate-300 text-center font-mono text-slate-600">
+                        {row.cutiSakitHari} hr
+                      </td>
+                      <td className="p-2 border border-slate-300 text-center font-mono text-slate-600">
+                        {row.cutiAlasanPentingHari} hr
+                      </td>
+                      <td className="p-2 border border-slate-300 text-center font-mono text-slate-600">
+                        {row.cutiMelahirkanHari + row.cutiBesarHari + row.cutiLainnyaHari} hr
+                      </td>
+                      <td className="p-2 border border-slate-300 text-[11px] text-slate-600">
+                        {row.cutiTerakhir}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : reportType === 'tempat-tugas' ? (
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left border border-slate-300">
               <thead className="bg-slate-100 font-bold uppercase text-[10px]">
@@ -759,7 +1255,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
           </div>
         )}
 
-        {/* Signature Blocks - Mengambil dr. Ignatius Dendy Purnama dan Pipit Apriyani langsung dari data pegawai */}
+        {/* Signature Blocks - dr. Ignatius Dendy Purnama & Pipit Apriyani */}
         <div className="mt-12 pt-4 grid grid-cols-2 text-center text-xs">
           <div>
             <p className="text-slate-600">Pengelola Kepegawaian,</p>
