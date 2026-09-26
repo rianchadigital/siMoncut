@@ -1,9 +1,13 @@
 node_modules/
 build/
-# dist/ is deliberately tracked so Hostinger Git sync works immediately with 1 click
-# dist/
 coverage/
 .DS_Store
 *.log
 .env*
 !.env.example
+
+# PASTIKAN BERKAS DEPLOY HOSTINGER WAJIB DITRACK GIT:
+!dist/
+!dist/**
+!dist_package.dat
+!dist.zip
