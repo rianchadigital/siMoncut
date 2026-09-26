@@ -1,6 +1,7 @@
 node_modules/
 build/
-dist/
+# dist/ is deliberately tracked so Hostinger Git sync works immediately with 1 click
+# dist/
 coverage/
 .DS_Store
 *.log

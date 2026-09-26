@@ -1,65 +1,84 @@
-# Panduan Mengatasi Website Ngeblank Putih di Hostinger (SiMONCUT)
+# Panduan Lengkap SiMONCUT: Deploy Sekali Klik GitHub ke Hostinger (Anti Layar Putih)
 
-Dokumen ini menjelaskan penyebab layar putih (*blank white screen*) saat melakukan hosting di **Hostinger** dan solusi mudah agar aplikasi **SiMONCUT** langsung tampil normal.
+Dokumen ini berisi panduan resmi agar aplikasi **SiMONCUT (Sistem Monitoring Cuti Pegawai Puskesmas Kepulauan Seribu Selatan)** langsung tampil normal dan berfungsi penuh tanpa layar putih (*blank screen*) saat disinkronisasikan dari GitHub ke Hostinger.
 
----
-
-## 🔍 Mengapa Terjadi Blank Putih di Hostinger?
-
-1. **Hostinger Git Deployment Hanya Mengunduh Kode Mentah**:
-   Fitur Git bawaan di hPanel Hostinger hanya melakukan `git pull` dari repositori GitHub. File `index.html` utama di root masih memanggil `<script src="/src/main.tsx">`. Peramban (browser) **tidak dapat membaca file TypeScript (`.tsx`) secara langsung**, sehingga peramban memunculkan error dan layar menjadi putih polos.
-2. **Belum Ada File `.htaccess`**:
-   Server Hostinger menggunakan Apache / LiteSpeed. Aplikasi React SPA membutuhkan berkas `.htaccess` agar semua rute dialihkan (*rewrite*) ke file build yang sudah dikompilasi.
-3. **Jalur Aset (Base URL)**:
-   Sebelumnya jalur aset menggunakan path absolut `/assets/`. Kami telah memperbaruinya menjadi `./assets/` (relatif) agar dapat dibuka di domain utama maupun sub-direktori tanpa error 404.
+> **Tagline Aplikasi:**  
+> *“Pantau Cuti, Mudahkan Pengelolaan Kepegawaian”*
 
 ---
 
-## 🚀 3 Pilihan Solusi Agar Langsung Tampil di Hostinger
+## 🛑 Penyebab Utama Masalah "Layar Putih" di Hostinger
 
-### Pilihan 1: Upload Isi Folder `dist/` ke Hostinger (Paling Cepat & Mudah)
-Jika Anda ingin langsung online dalam 2 menit:
-1. Di komputer lokal Anda, jalankan perintah:
-   ```bash
-   npm run build
-   ```
-2. Buka folder `dist/` yang baru saja terbentuk.
-3. Buka **hPanel Hostinger** > **File Manager** > buka folder `public_html`.
-4. Unggah **semua isi di dalam folder `dist/`** (yaitu file `index.html`, `.htaccess`, folder `assets/`, dll.) langsung ke dalam `public_html`.
-5. Buka domain Anda di browser: Website langsung tampil normal tanpa layar putih!
+Ketika repositori GitHub ditarik (*Git Deploy / Pull*) ke Hostinger:
+1. **Hostinger Hanya Menarik Kode Mentah**:  
+   Secara default, Hostinger Git tidak otomatis menjalankan `npm run build`. File `index.html` mentah di root memanggil `<script type="module" src="/src/main.tsx">`. Peramban (browser) **tidak dapat membaca file TypeScript/JSX (`.tsx`) secara langsung**, sehingga peramban mengalami error sintaks dan layar menjadi putih polos.
+2. **Folder `dist/` Sebelumnya Masuk `.gitignore`**:  
+   Karena diabaikan oleh Git, folder hasil kompilasi `dist/` tidak pernah terunggah ke repositori GitHub. Akibatnya, server Hostinger tidak memiliki file aplikasi siap jalan.
+3. **Prioritas File Index Server**:  
+   Server Apache di Hostinger secara default mencari `index.html` mentah di root sebelum membaca file hasil build.
 
 ---
 
-### Pilihan 2: Otomatisasi GitHub Actions (Sangat Disarankan)
-Kami sudah menyiapkan berkas `.github/workflows/deploy-hostinger.yml` di repositori ini. Setiap kali Anda melakukan `git push` ke GitHub, GitHub akan otomatis mengompilasi kode dan mengunggahnya ke Hostinger.
+## ✅ Solusi yang Telah Diterapkan di Repositori Ini (Siap Sekali Klik!)
 
-**Langkah aktivasi:**
-1. Buka hPanel Hostinger > menu **FTP Accounts**. Catat:
-   - **FTP Server / Host** (contoh: `ftp.domainanda.com` atau IP Hostinger)
-   - **FTP Username**
-   - **FTP Password**
-2. Buka repositori GitHub Anda di browser > klik **Settings** > **Secrets and variables** > **Actions** > **New repository secret**.
-3. Buat 3 secret:
-   - `HOSTINGER_FTP_SERVER` : (Host/IP FTP Hostinger)
-   - `HOSTINGER_FTP_USERNAME` : (Username FTP)
-   - `HOSTINGER_FTP_PASSWORD` : (Password FTP)
-4. Lakukan `git push` ke branch `main`. GitHub Actions akan otomatis melakukan build dan upload ke `public_html`.
+Kami telah mengonfigurasi seluruh sistem agar **SEKALI KLIK SINKRONISASI DI HOSTINGER LANGSUNG JALAN**:
+
+1. **Folder `dist/` Sudah Dikompilasi & Diikutsertakan di Git**:  
+   Aturan `.gitignore` telah disesuaikan agar folder produksi `dist/` yang berisi file HTML, CSS, JavaScript teroptimasi, dan PWA Service Worker ikut tersimpan di repositori GitHub. Saat Anda sinkronisasi di Hostinger, semua file siap pakai langsung tersedia di `public_html/dist/`.
+2. **File `.htaccess` Cerdas di Root**:  
+   Secara otomatis mengarahkan pengunjung ke `dist/index.html` dan memetakan semua aset (`/assets/...`, manifest, service worker) serta rute SPA tanpa perlu konfigurasi manual.
+3. **Dispatcher `index.php` Cadangan**:  
+   Jika server Hostinger memprioritaskan PHP atau modul rewrite tertentu berbeda, `index.php` bertindak sebagai dispatcher otomatis yang melayani `dist/index.html` dan mengatur MIME type berkas JS/CSS secara sempurna.
+4. **File `.htaccess` di dalam Folder `dist/`**:  
+   Jika Anda mengubah *Document Root* di Hostinger ke `public_html/dist`, aplikasi tetap berjalan 100% dengan dukungan SPA routing.
 
 ---
 
-### Pilihan 3: Menggunakan Git di hPanel Hostinger
-Jika Anda menggunakan fitur **Git** di hPanel Hostinger:
-1. Hubungkan repositori GitHub Anda seperti biasa ke folder `public_html`.
-2. Di hPanel Hostinger, ubah **Document Root** domain Anda dari `public_html` menjadi:
+## 🚀 Cara Sinkronisasi GitHub ke Hostinger (Sekali Klik)
+
+### Langkah 1: Hubungkan Repositori GitHub di Hostinger
+1. Masuk ke **hPanel Hostinger**.
+2. Pilih hosting/domain Anda, lalu buka menu **Tingkat Lanjut (Advanced)** > **Git**.
+3. Masukkan:
+   - **Repository**: URL GitHub repositori Anda (misal: `https://github.com/username/simoncut.git`)
+   - **Branch**: `main`
+   - **Install path**: biarkan kosong atau isi `public_html`
+4. Klik **Deploy** / **Buat**.
+
+### Langkah 2: Setiap Ada Pembaruan (Sinkronisasi Sekali Klik)
+- Setiap kali Anda ingin memperbarui website dari GitHub, cukup klik tombol **Deploy** / **Tarik Cabang (Pull)** di menu Git Hostinger.
+- Website langsung terupdate dan langsung tampil tanpa layar putih!
+
+---
+
+## 🛠️ Alternatif 1: Mengatur Document Root ke `public_html/dist` (Opsi Terbaik di Hostinger)
+Jika Anda ingin performa maksimal dan struktur terbersih di Hostinger:
+1. Buka hPanel Hostinger > menu **Domain** atau **Websites**.
+2. Ubah **Document Root** domain Anda dari `public_html` menjadi:
    ```text
    public_html/dist
    ```
-   *(Atau jalankan terminal SSH di Hostinger: `cd public_html && npm install && npm run build`)*.
-3. File `.htaccess` yang telah kami sediakan di root dan di dalam folder `public/` akan otomatis memastikan routing aplikasi berjalan lancar.
+3. Klik **Simpan**. Website langsung membaca folder `dist/` sebagai halaman utama.
 
 ---
 
-## 🛡️ Fitur Proteksi Layar Putih yang Sudah Ditambahkan:
-1. **ErrorBoundary**: Jika terjadi kendala pada peramban klien, sistem menampilkan pesan ramah dengan tombol **Muat Ulang Halaman** dan **Reset Cache & Data**.
-2. **Base URL Relatif (`./`)**: Menghindari kegagalan muat file CSS / JS akibat perbedaan domain / sub-folder.
-3. **MIME Types di `.htaccess`**: Memastikan LiteSpeed Hostinger mengenali file `.js` ES Modules dan font web.
+## 🛠️ Alternatif 2: Otomatisasi GitHub Actions (Opsional)
+Kami juga menyertakan file `.github/workflows/deploy-hostinger.yml`.  
+Jika Anda ingin setiap `git push` otomatis terunggah via FTP tanpa perlu membuka hPanel:
+1. Buka hPanel Hostinger > **FTP Accounts** (catat Host, Username, Password).
+2. Di repositori GitHub > **Settings** > **Secrets and variables** > **Actions**.
+3. Tambahkan 3 secret:
+   - `HOSTINGER_FTP_SERVER`
+   - `HOSTINGER_FTP_USERNAME`
+   - `HOSTINGER_FTP_PASSWORD`
+4. Setiap push ke branch `main`, GitHub Actions akan otomatis mengompilasi dan mengunggah ke Hostinger.
+
+---
+
+## 📋 Ringkasan File Kunci Siap Deploy:
+- `/.htaccess` : Mengalihkan lalu lintas root ke folder build produksi `dist/`
+- `/index.php` : Dispatcher PHP cadangan untuk streaming file aset dan SPA
+- `/dist/` : Berisi berkas kompilasi produksi siap tayang (HTML, JS, CSS, PWA)
+- `/dist/.htaccess` : Routing SPA dan MIME types di dalam folder dist
+- `/.gitignore` : Memastikan folder `dist/` tersinkronisasi ke GitHub
+- `/package.json` : Konfigurasi dependensi dan perintah `build`

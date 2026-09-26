@@ -1,30 +1,57 @@
 # ====================================================================
-# Root .htaccess for Hostinger Git Deployment
+# SiMONCUT - Hostinger Apache & LiteSpeed Configuration
+# Sistem Monitoring Cuti Pegawai Puskesmas Kepulauan Seribu Selatan
+# Tagline: “Pantau Cuti, Mudahkan Pengelolaan Kepegawaian”
 # ====================================================================
+
+# 1. Pastikan Apache memprioritaskan dist/index.html atau index.php, BUKAN root index.html mentah
+DirectoryIndex dist/index.html index.php index.html
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
 
-  # If dist directory exists, automatically forward traffic into dist/
-  RewriteCond %{DOCUMENT_ROOT}/dist/index.html -f
-  RewriteCond %{REQUEST_URI} !^/dist/
+  # JANGAN PERNAH menyajikan root index.html mentah ke pengunjung (karena itu template Vite dev)
+  RewriteRule ^index\.html$ dist/index.html [L]
+
+  # Jika file yang diminta ada di dalam folder dist/ (seperti assets, favicon, manifest, sw)
+  # Arahkan langsung ke file tersebut di dist/
+  RewriteCond %{DOCUMENT_ROOT}/dist/$1 -f
   RewriteRule ^(.*)$ dist/$1 [L]
 
-  # If inside dist or standalone, fallback to index.html for SPA routing
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule ^ index.html [L]
+  # Jika URL adalah root (/) arahkan langsung ke dist/index.html
+  RewriteRule ^$ dist/index.html [L]
+
+  # Izinkan akses langsung jika file memang ada di root (misal robots.txt, index.php)
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Semua rute SPA lainnya (misal /cuti, /laporan, dll) diarahkan ke dist/index.html
+  RewriteCond %{DOCUMENT_ROOT}/dist/index.html -f
+  RewriteRule ^.*$ dist/index.html [L]
+
+  # Fallback terakhir ke index.php jika dist tidak sengaja hilang
+  RewriteRule ^.*$ index.php [L]
 </IfModule>
 
-# Ensure proper MIME types for JavaScript and assets
+# Pastikan MIME Types akurat untuk JavaScript ES Modules, CSS, Manifest, dan Font
 <IfModule mod_mime.c>
   AddType application/javascript .js .mjs
   AddType text/css .css
   AddType application/json .json .webmanifest
   AddType image/svg+xml .svg
   AddType font/woff2 .woff2
+  AddType font/woff .woff
 </IfModule>
 
-# Prevent directory listing
+# Header keamanan dan CORS untuk font & aset
+<IfModule mod_headers.c>
+  <FilesMatch "\.(ttf|ttc|otf|eot|woff|woff2|font.css|css|js|svg)$">
+    Header set Access-Control-Allow-Origin "*"
+  </FilesMatch>
+  Header always set X-Content-Type-Options "nosniff"
+</IfModule>
+
+# Cegah directory listing
 Options -Indexes

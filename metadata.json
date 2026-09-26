@@ -1,6 +1,6 @@
 {
-  "name": "SIMON CUTI – Puskesmas Kepulauan Seribu Selatan",
-  "description": "Sistem Monitoring Cuti Pegawai Puskesmas Kepulauan Seribu Selatan terintegrasi Google Spreadsheet dan PWA.",
+  "name": "SiMONCUT",
+  "description": "SiMONCUT - Sistem Monitoring Cuti Pegawai Puskesmas Kepulauan Seribu Selatan. Tagline: “Pantau Cuti, Mudahkan Pengelolaan Kepegawaian”",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
