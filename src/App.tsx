@@ -21,7 +21,7 @@ import { AddLeaveModal } from './components/AddLeaveModal';
 import { IntegrationModal } from './components/IntegrationModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { Cuti } from './types';
-import { Plus, Database, Sparkles, Calendar, Layers, ShieldCheck, MapPin, PanelLeftOpen } from 'lucide-react';
+import { Plus, Database, Sparkles, Calendar, Layers, ShieldCheck, MapPin } from 'lucide-react';
 import { formatDateIndo, getCurrentWeekRange, getCurrentMonthRange, getNextMonthRange, getTodayString, isSameUnit } from './utils/dateUtils';
 
 export default function App() {
@@ -128,18 +128,6 @@ export default function App() {
       <div className={`flex-1 flex w-full mx-auto transition-all duration-300 relative ${
         isSidebarCollapsed ? 'max-w-[1920px] px-2 sm:px-4' : 'max-w-7xl'
       }`}>
-        {/* Floating Quick Button to Re-open Sidebar when collapsed on desktop */}
-        {isSidebarCollapsed && (
-          <button
-            onClick={handleToggleSidebarCollapse}
-            className="hidden lg:flex fixed left-0 top-20 z-20 items-center gap-1.5 px-3 py-2 bg-slate-900/95 text-white hover:bg-teal-700 rounded-r-xl shadow-lg border border-l-0 border-slate-700 text-xs font-semibold transition active:scale-95 group no-print cursor-pointer"
-            title="Klik untuk membuka menu samping"
-          >
-            <PanelLeftOpen className="w-4 h-4 text-teal-400 group-hover:text-white" />
-            <span className="text-[11px] font-bold">Buka Menu</span>
-          </button>
-        )}
-
         {/* Sidebar Navigation */}
         <Sidebar
           activeTab={activeTab}

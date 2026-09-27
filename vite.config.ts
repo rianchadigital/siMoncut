@@ -8,6 +8,18 @@ export default defineConfig(() => {
   return {
     base: './',
     plugins: [
+      {
+        name: 'safeguard-vite-client-ws',
+        enforce: 'pre',
+        transform(code, id) {
+          if (id.includes('@vite/client') || id.includes('client.mjs') || id.includes('bundledDevClient.mjs')) {
+            return code.replace(
+              /ws\.send\(JSON\.stringify\(data\)\);/g,
+              'if (typeof ws !== "undefined" && ws && ws.readyState === ws.OPEN) { ws.send(JSON.stringify(data)); }'
+            );
+          }
+        },
+      },
       react(),
       tailwindcss(),
       VitePWA({

@@ -1,9 +1,8 @@
 import React from 'react';
-import { RefreshCw, Shield, UserCheck, Menu, Database, CheckCircle2, Zap, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { RefreshCw, Shield, UserCheck, Menu, Database, CheckCircle2, Zap, PanelLeftClose, PanelLeftOpen, CalendarCheck } from 'lucide-react';
 import { UserRole } from '../types';
 import { formatTimestampIndo } from '../utils/dateUtils';
 import { PWAInstallButton } from './PWAInstallButton';
-import { LogoJayaRaya, LogoKesehatan } from './OfficialLogos';
 
 interface HeaderProps {
   lastSync: string;
@@ -30,9 +29,6 @@ export const Header: React.FC<HeaderProps> = ({
   isSidebarCollapsed = false,
   onToggleSidebarCollapse,
 }) => {
-  const hideLogoJaya = typeof window !== 'undefined' ? localStorage.getItem('simon_hide_logo_jaya') !== 'false' : true;
-  const hideLogoKemenkes = typeof window !== 'undefined' ? localStorage.getItem('simon_hide_logo_kemenkes') !== 'false' : true;
-
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 lg:px-6 py-2.5 transition-colors no-print">
       <div className={`flex items-center justify-between gap-4 w-full mx-auto transition-all duration-300 ${
@@ -48,48 +44,22 @@ export const Header: React.FC<HeaderProps> = ({
             <Menu className="w-5 h-5" />
           </button>
 
-          {/* Desktop Toggle Button: Sembunyikan / Tampilkan Menu */}
-          {onToggleSidebarCollapse && (
+          {/* Desktop Toggle Icon: hanya tampil jika menu sedang disembunyikan agar bisa dibuka kembali */}
+          {isSidebarCollapsed && onToggleSidebarCollapse && (
             <button
               onClick={onToggleSidebarCollapse}
-              className={`hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition shadow-2xs cursor-pointer ${
-                isSidebarCollapsed
-                  ? 'bg-teal-600 text-white border-teal-600 hover:bg-teal-700 shadow-sm'
-                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-400'
-              }`}
-              title={
-                isSidebarCollapsed
-                  ? 'Tampilkan kembali menu navigasi samping'
-                  : 'Sembunyikan menu samping agar tampilan konten tabel lebih lebar'
-              }
+              aria-label="Buka menu navigasi samping"
+              title="Buka menu navigasi samping"
+              className="hidden lg:flex p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg focus:outline-hidden transition cursor-pointer"
             >
-              {isSidebarCollapsed ? (
-                <>
-                  <PanelLeftOpen className="w-4 h-4 text-white" />
-                  <span>Tampilkan Menu</span>
-                </>
-              ) : (
-                <>
-                  <PanelLeftClose className="w-4 h-4 text-slate-500" />
-                  <span className="hidden xl:inline">Sembunyikan Menu</span>
-                </>
-              )}
+              <PanelLeftOpen className="w-5 h-5 text-teal-600" />
             </button>
           )}
 
           <div className="flex items-center gap-3">
-            {/* Official Logos Side-by-side or clean emblem */}
-            {(!hideLogoJaya || !hideLogoKemenkes) ? (
-              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-50 border border-slate-200/90 shadow-2xs shrink-0">
-                {!hideLogoJaya && <LogoJayaRaya className="w-7 h-8 object-contain" />}
-                {!hideLogoJaya && !hideLogoKemenkes && <div className="w-px h-6 bg-slate-300" />}
-                {!hideLogoKemenkes && <LogoKesehatan className="w-7 h-8 object-contain" />}
-              </div>
-            ) : (
-              <div className="w-7 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center font-black text-xs font-mono shadow-2xs shrink-0">
-                SC
-              </div>
-            )}
+            <div className="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-xs shrink-0">
+              <CalendarCheck className="w-4 h-4 text-white" />
+            </div>
 
             <div>
               <div className="flex items-center gap-2">
