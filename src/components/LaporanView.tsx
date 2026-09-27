@@ -21,6 +21,9 @@ import {
   BarChart3,
   CalendarCheck2,
   ArrowUpDown,
+  Eye,
+  EyeOff,
+  Trash2,
 } from 'lucide-react';
 import {
   formatDateIndo,
@@ -86,6 +89,18 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
   });
   const [customLogoKemenkes, setCustomLogoKemenkes] = useState<string>(() => {
     return localStorage.getItem('simon_custom_logo_kemenkes') || '';
+  });
+  const [hideLogoJaya, setHideLogoJaya] = useState<boolean>(() => {
+    const saved = localStorage.getItem('simon_hide_logo_jaya');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [hideLogoKemenkes, setHideLogoKemenkes] = useState<boolean>(() => {
+    const saved = localStorage.getItem('simon_hide_logo_kemenkes');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [showKopSurat, setShowKopSurat] = useState<boolean>(() => {
+    const saved = localStorage.getItem('simon_show_kop_surat');
+    return saved !== null ? saved === 'true' : false;
   });
   const [inputDriveJaya, setInputDriveJaya] = useState<string>('');
   const [inputDriveKemenkes, setInputDriveKemenkes] = useState<string>('');
@@ -388,13 +403,56 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
     }
   };
 
+  const handleToggleHideLogoJaya = () => {
+    const next = !hideLogoJaya;
+    setHideLogoJaya(next);
+    localStorage.setItem('simon_hide_logo_jaya', String(next));
+    showSaveToast();
+  };
+
+  const handleToggleHideLogoKemenkes = () => {
+    const next = !hideLogoKemenkes;
+    setHideLogoKemenkes(next);
+    localStorage.setItem('simon_hide_logo_kemenkes', String(next));
+    showSaveToast();
+  };
+
+  const handleToggleShowKopSurat = () => {
+    const next = !showKopSurat;
+    setShowKopSurat(next);
+    localStorage.setItem('simon_show_kop_surat', String(next));
+    showSaveToast();
+  };
+
+  const handleRemoveLogoJaya = () => {
+    setHideLogoJaya(true);
+    localStorage.setItem('simon_hide_logo_jaya', 'true');
+    setCustomLogoJaya('');
+    localStorage.removeItem('simon_custom_logo_jaya');
+    showSaveToast();
+  };
+
+  const handleRemoveLogoKemenkes = () => {
+    setHideLogoKemenkes(true);
+    localStorage.setItem('simon_hide_logo_kemenkes', 'true');
+    setCustomLogoKemenkes('');
+    localStorage.removeItem('simon_custom_logo_kemenkes');
+    showSaveToast();
+  };
+
   const handleResetLogos = () => {
     setCustomLogoJaya('');
     setCustomLogoKemenkes('');
+    setHideLogoJaya(true);
+    setHideLogoKemenkes(true);
+    setShowKopSurat(false);
     setInputDriveJaya('');
     setInputDriveKemenkes('');
     localStorage.removeItem('simon_custom_logo_jaya');
     localStorage.removeItem('simon_custom_logo_kemenkes');
+    localStorage.setItem('simon_hide_logo_jaya', 'true');
+    localStorage.setItem('simon_hide_logo_kemenkes', 'true');
+    localStorage.setItem('simon_show_kop_surat', 'false');
     showSaveToast();
   };
 
@@ -459,6 +517,31 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleToggleShowKopSurat}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold shadow-2xs transition cursor-pointer ${
+                !showKopSurat
+                  ? 'bg-amber-100 text-amber-900 border-amber-300 font-bold'
+                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+              }`}
+              title={
+                !showKopSurat
+                  ? 'Saat ini dalam format Lampiran tanpa logo/kop. Klik untuk tampilkan kembali kop surat.'
+                  : 'Sembunyikan logo dan kop surat untuk format cetak Lampiran atau kertas berkop resmi.'
+              }
+            >
+              {!showKopSurat ? (
+                <>
+                  <EyeOff className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Mode: Lampiran Tanpa Logo</span>
+                </>
+              ) : (
+                <>
+                  <Eye className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Kop Logo Aktif</span>
+                </>
+              )}
+            </button>
             <button
               onClick={() => setShowSignatoryConfig(!showSignatoryConfig)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold shadow-2xs transition"
@@ -674,81 +757,169 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
               {/* Logo Jaya Raya Box */}
-              <div className="p-3 bg-white rounded-lg border border-teal-200 space-y-2">
+              <div className={`p-3 rounded-lg border space-y-2 transition ${
+                hideLogoJaya ? 'bg-slate-50 border-slate-300' : 'bg-white border-teal-200'
+              }`}>
+                <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                  <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1">
+                    <span>Logo Jaya Raya DKI (Kiri)</span>
+                    {hideLogoJaya && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium">
+                        Dihilangkan
+                      </span>
+                    )}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={handleToggleHideLogoJaya}
+                      className={`text-[10px] px-2 py-0.5 rounded font-semibold transition flex items-center gap-1 cursor-pointer ${
+                        hideLogoJaya
+                          ? 'bg-teal-600 text-white hover:bg-teal-700'
+                          : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                      }`}
+                      title={hideLogoJaya ? 'Tampilkan logo Jaya Raya kembali' : 'Hilangkan logo Jaya Raya dari kop surat'}
+                    >
+                      {hideLogoJaya ? (
+                        <>
+                          <Eye className="w-3 h-3" /> Tampilkan
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-3 h-3" /> Hilangkan Logo
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
                 <div className="flex items-center gap-3">
-                  <div className="w-14 h-16 shrink-0 bg-slate-50 border border-slate-200 rounded p-1 flex items-center justify-center">
+                  <div className={`w-14 h-16 shrink-0 rounded p-1 flex items-center justify-center border transition ${
+                    hideLogoJaya ? 'bg-slate-100 border-slate-200 opacity-40' : 'bg-slate-50 border-slate-200'
+                  }`}>
                     <LogoJayaRaya customSrc={customLogoJaya || undefined} className="w-12 h-14" />
                   </div>
                   <div className="flex-1 space-y-1">
-                    <span className="font-bold text-slate-800 block text-[11px]">Logo Jaya Raya (Kiri)</span>
                     <span className="text-[10px] text-slate-500 block">
-                      {customLogoJaya ? 'Kustom aktif' : 'Vektor resmi DKI Jakarta'}
+                      {hideLogoJaya
+                        ? 'Status: Dinonaktifkan (tidak dicetak di dokumen)'
+                        : customLogoJaya
+                        ? 'Kustom aktif'
+                        : 'Vektor resmi DKI Jakarta'}
                     </span>
-                    <label className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-teal-50 border border-teal-300 text-teal-800 text-[10px] font-semibold hover:bg-teal-100 cursor-pointer">
-                      <Upload className="w-3 h-3" /> Upload File
-                      <input type="file" accept="image/*" onChange={handleUploadLogoJaya} className="hidden" />
+                    {!hideLogoJaya && (
+                      <label className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-teal-50 border border-teal-300 text-teal-800 text-[10px] font-semibold hover:bg-teal-100 cursor-pointer">
+                        <Upload className="w-3 h-3" /> Upload File Baru
+                        <input type="file" accept="image/*" onChange={handleUploadLogoJaya} className="hidden" />
+                      </label>
+                    )}
+                  </div>
+                </div>
+
+                {!hideLogoJaya && (
+                  <div className="pt-2 border-t border-slate-100">
+                    <label className="block text-[10px] text-slate-500 font-semibold mb-1">
+                      Atau Link Google Drive Logo Jaya Raya:
                     </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="url"
+                        placeholder="https://drive.google.com/file/d/..."
+                        value={inputDriveJaya}
+                        onChange={(e) => setInputDriveJaya(e.target.value)}
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-[11px] text-slate-800 focus:outline-hidden focus:border-teal-600"
+                      />
+                      <button
+                        onClick={handleApplyDriveJaya}
+                        className="px-2.5 py-1 bg-teal-700 text-white rounded text-[11px] font-semibold hover:bg-teal-800 cursor-pointer shrink-0"
+                      >
+                        Terapkan
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div className="pt-2 border-t border-slate-100">
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-1">
-                    Atau Link Google Drive Logo Jaya Raya:
-                  </label>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="url"
-                      placeholder="https://drive.google.com/file/d/..."
-                      value={inputDriveJaya}
-                      onChange={(e) => setInputDriveJaya(e.target.value)}
-                      className="flex-1 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-[11px] text-slate-800 focus:outline-hidden focus:border-teal-600"
-                    />
-                    <button
-                      onClick={handleApplyDriveJaya}
-                      className="px-2.5 py-1 bg-teal-700 text-white rounded text-[11px] font-semibold hover:bg-teal-800 cursor-pointer shrink-0"
-                    >
-                      Terapkan
-                    </button>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Logo Kesehatan Box */}
-              <div className="p-3 bg-white rounded-lg border border-teal-200 space-y-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-14 h-16 shrink-0 bg-slate-50 border border-slate-200 rounded p-1 flex items-center justify-center">
-                    <LogoKesehatan customSrc={customLogoKemenkes || undefined} className="w-12 h-14" />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <span className="font-bold text-slate-800 block text-[11px]">Logo Kesehatan (Kanan)</span>
-                    <span className="text-[10px] text-slate-500 block">
-                      {customLogoKemenkes ? 'Kustom aktif' : 'Vektor resmi Puskesmas Indonesia'}
-                    </span>
-                    <label className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-teal-50 border border-teal-300 text-teal-800 text-[10px] font-semibold hover:bg-teal-100 cursor-pointer">
-                      <Upload className="w-3 h-3" /> Upload File
-                      <input type="file" accept="image/*" onChange={handleUploadLogoKemenkes} className="hidden" />
-                    </label>
-                  </div>
-                </div>
-                <div className="pt-2 border-t border-slate-100">
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-1">
-                    Atau Link Google Drive Logo Kesehatan:
-                  </label>
+              <div className={`p-3 rounded-lg border space-y-2 transition ${
+                hideLogoKemenkes ? 'bg-slate-50 border-slate-300' : 'bg-white border-teal-200'
+              }`}>
+                <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                  <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1">
+                    <span>Logo Kesehatan (Kanan)</span>
+                    {hideLogoKemenkes && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium">
+                        Dihilangkan
+                      </span>
+                    )}
+                  </span>
                   <div className="flex items-center gap-1.5">
-                    <input
-                      type="url"
-                      placeholder="https://drive.google.com/file/d/..."
-                      value={inputDriveKemenkes}
-                      onChange={(e) => setInputDriveKemenkes(e.target.value)}
-                      className="flex-1 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-[11px] text-slate-800 focus:outline-hidden focus:border-teal-600"
-                    />
                     <button
-                      onClick={handleApplyDriveKemenkes}
-                      className="px-2.5 py-1 bg-teal-700 text-white rounded text-[11px] font-semibold hover:bg-teal-800 cursor-pointer shrink-0"
+                      onClick={handleToggleHideLogoKemenkes}
+                      className={`text-[10px] px-2 py-0.5 rounded font-semibold transition flex items-center gap-1 cursor-pointer ${
+                        hideLogoKemenkes
+                          ? 'bg-teal-600 text-white hover:bg-teal-700'
+                          : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                      }`}
+                      title={hideLogoKemenkes ? 'Tampilkan logo Kesehatan kembali' : 'Hilangkan logo Kesehatan dari kop surat'}
                     >
-                      Terapkan
+                      {hideLogoKemenkes ? (
+                        <>
+                          <Eye className="w-3 h-3" /> Tampilkan
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-3 h-3" /> Hilangkan Logo
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
+
+                <div className="flex items-center gap-3">
+                  <div className={`w-14 h-16 shrink-0 rounded p-1 flex items-center justify-center border transition ${
+                    hideLogoKemenkes ? 'bg-slate-100 border-slate-200 opacity-40' : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <LogoKesehatan customSrc={customLogoKemenkes || undefined} className="w-12 h-14" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <span className="text-[10px] text-slate-500 block">
+                      {hideLogoKemenkes
+                        ? 'Status: Dinonaktifkan (tidak dicetak di dokumen)'
+                        : customLogoKemenkes
+                        ? 'Kustom aktif'
+                        : 'Vektor resmi Puskesmas Indonesia'}
+                    </span>
+                    {!hideLogoKemenkes && (
+                      <label className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-teal-50 border border-teal-300 text-teal-800 text-[10px] font-semibold hover:bg-teal-100 cursor-pointer">
+                        <Upload className="w-3 h-3" /> Upload File Baru
+                        <input type="file" accept="image/*" onChange={handleUploadLogoKemenkes} className="hidden" />
+                      </label>
+                    )}
+                  </div>
+                </div>
+
+                {!hideLogoKemenkes && (
+                  <div className="pt-2 border-t border-slate-100">
+                    <label className="block text-[10px] text-slate-500 font-semibold mb-1">
+                      Atau Link Google Drive Logo Kesehatan:
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="url"
+                        placeholder="https://drive.google.com/file/d/..."
+                        value={inputDriveKemenkes}
+                        onChange={(e) => setInputDriveKemenkes(e.target.value)}
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-[11px] text-slate-800 focus:outline-hidden focus:border-teal-600"
+                      />
+                      <button
+                        onClick={handleApplyDriveKemenkes}
+                        className="px-2.5 py-1 bg-teal-700 text-white rounded text-[11px] font-semibold hover:bg-teal-800 cursor-pointer shrink-0"
+                      >
+                        Terapkan
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -937,51 +1108,82 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
 
       {/* Printable Sheet Layout */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 sm:p-8 print-container">
-        {/* Official Government Kop Surat with Dual Logos */}
-        <div className="pb-3 mb-6">
-          <div className="flex items-center justify-between gap-4">
-            {/* Logo Jaya Raya (Kiri) */}
-            <div className="w-18 sm:w-22 shrink-0 flex items-center justify-center">
-              <LogoJayaRaya
-                customSrc={customLogoJaya || undefined}
-                className="w-16 h-20 sm:w-20 sm:h-24"
-              />
-            </div>
-
-            {/* Kop Teks Dinas Kesehatan & Puskesmas (Tengah) */}
-            <div className="flex-1 text-center px-1">
-              <h4 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-800 leading-tight">
-                PEMERINTAH PROVINSI DAERAH KHUSUS IBUKOTA JAKARTA
-              </h4>
-              <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wide text-slate-800 leading-tight mt-0.5">
-                DINAS KESEHATAN
-              </h3>
-              <h2 className="text-sm sm:text-base md:text-lg font-black uppercase text-slate-900 leading-tight mt-0.5">
-                PUSKESMAS KECAMATAN KEPULAUAN SERIBU SELATAN
-              </h2>
-              <p className="text-[10px] sm:text-[11px] text-slate-600 mt-1 leading-normal">
-                Jl. Pantai Selatan No. 1, Kelurahan Pulau Tidung, Kec. Kepulauan Seribu Selatan
-              </p>
-              <p className="text-[9px] sm:text-[10px] text-slate-500 font-mono mt-0.5">
-                Telepon: (021) 6440268 · Pos-el: puskesmas.kepseribuselatan@jakarta.go.id · KODE POS 14520
-              </p>
-            </div>
-
-            {/* Logo Kesehatan Kemenkes / Puskesmas (Kanan) */}
-            <div className="w-18 sm:w-22 shrink-0 flex items-center justify-center">
-              <LogoKesehatan
-                customSrc={customLogoKemenkes || undefined}
-                className="w-16 h-20 sm:w-20 sm:h-24"
-              />
+        {/* Official Government Kop Surat or Clean Lampiran Header */}
+        {!showKopSurat ? (
+          <div className="pb-3 mb-6 border-b-2 border-black">
+            <div className="flex justify-between items-start">
+              <div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-mono">
+                  DOKUMEN LAMPIRAN RESMI KEPEGAWAIAN
+                </span>
+                <h4 className="text-xs sm:text-sm font-bold uppercase text-slate-900 leading-tight mt-0.5">
+                  PUSKESMAS KECAMATAN KEPULAUAN SERIBU SELATAN
+                </h4>
+              </div>
+              <div className="text-right text-[11px] font-mono">
+                <span className="font-bold text-slate-900 text-xs block">LAMPIRAN I</span>
+                <span className="text-slate-600 text-[10px]">Rekapitulasi Cuti Pegawai</span>
+              </div>
             </div>
           </div>
+        ) : (
+          <div className="pb-3 mb-6">
+            <div className="flex items-center justify-between gap-4">
+              {/* Logo Jaya Raya (Kiri) */}
+              <div
+                className={`w-18 sm:w-22 shrink-0 flex items-center justify-center ${
+                  hideLogoJaya ? 'hidden' : ''
+                }`}
+              >
+                {!hideLogoJaya && (
+                  <LogoJayaRaya
+                    customSrc={customLogoJaya || undefined}
+                    className="w-16 h-20 sm:w-20 sm:h-24"
+                  />
+                )}
+              </div>
 
-          {/* Official Dual Line Divider */}
-          <div className="mt-3">
-            <div className="w-full h-[2.5px] bg-black"></div>
-            <div className="w-full h-[1px] bg-black mt-[1.5px]"></div>
+              {/* Kop Teks Dinas Kesehatan & Puskesmas (Tengah) */}
+              <div className="flex-1 text-center px-1">
+                <h4 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-800 leading-tight">
+                  PEMERINTAH PROVINSI DAERAH KHUSUS IBUKOTA JAKARTA
+                </h4>
+                <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wide text-slate-800 leading-tight mt-0.5">
+                  DINAS KESEHATAN
+                </h3>
+                <h2 className="text-sm sm:text-base md:text-lg font-black uppercase text-slate-900 leading-tight mt-0.5">
+                  PUSKESMAS KECAMATAN KEPULAUAN SERIBU SELATAN
+                </h2>
+                <p className="text-[10px] sm:text-[11px] text-slate-600 mt-1 leading-normal">
+                  Jl. Pantai Selatan No. 1, Kelurahan Pulau Tidung, Kec. Kepulauan Seribu Selatan
+                </p>
+                <p className="text-[9px] sm:text-[10px] text-slate-500 font-mono mt-0.5">
+                  Telepon: (021) 6440268 · Pos-el: puskesmas.kepseribuselatan@jakarta.go.id · KODE POS 14520
+                </p>
+              </div>
+
+              {/* Logo Kesehatan Kemenkes / Puskesmas (Kanan) */}
+              <div
+                className={`w-18 sm:w-22 shrink-0 flex items-center justify-center ${
+                  hideLogoKemenkes ? 'hidden' : ''
+                }`}
+              >
+                {!hideLogoKemenkes && (
+                  <LogoKesehatan
+                    customSrc={customLogoKemenkes || undefined}
+                    className="w-16 h-20 sm:w-20 sm:h-24"
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Official Dual Line Divider */}
+            <div className="mt-3">
+              <div className="w-full h-[2.5px] bg-black"></div>
+              <div className="w-full h-[1px] bg-black mt-[1.5px]"></div>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Report Document Title & Subtitle */}
         <div className="text-center mb-6 space-y-2">

@@ -21,7 +21,7 @@ import { AddLeaveModal } from './components/AddLeaveModal';
 import { IntegrationModal } from './components/IntegrationModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { Cuti } from './types';
-import { Plus, Database, Sparkles, Calendar, Layers, ShieldCheck, MapPin } from 'lucide-react';
+import { Plus, Database, Sparkles, Calendar, Layers, ShieldCheck, MapPin, PanelLeftOpen } from 'lucide-react';
 import { formatDateIndo, getCurrentWeekRange, getCurrentMonthRange, getNextMonthRange, getTodayString, isSameUnit } from './utils/dateUtils';
 
 export default function App() {
@@ -57,6 +57,23 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
   const [isOpenMobileMenu, setIsOpenMobileMenu] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('simon_sidebar_collapsed') === 'true';
+    }
+    return false;
+  });
+
+  const handleToggleSidebarCollapse = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('simon_sidebar_collapsed', String(next));
+      }
+      return next;
+    });
+  };
+
   const [selectedCuti, setSelectedCuti] = useState<Cuti | null>(null);
   const [isAddLeaveOpen, setIsAddLeaveOpen] = useState(false);
   const [preselectedNipForLeave, setPreselectedNipForLeave] = useState<string | undefined>(undefined);
@@ -104,9 +121,25 @@ export default function App() {
         onOpenIntegration={() => setIsIntegrationOpen(true)}
         onToggleMobileMenu={() => setIsOpenMobileMenu(true)}
         isGasConfigured={Boolean(gasUrl)}
+        isSidebarCollapsed={isSidebarCollapsed}
+        onToggleSidebarCollapse={handleToggleSidebarCollapse}
       />
 
-      <div className="flex-1 flex max-w-7xl w-full mx-auto">
+      <div className={`flex-1 flex w-full mx-auto transition-all duration-300 relative ${
+        isSidebarCollapsed ? 'max-w-[1920px] px-2 sm:px-4' : 'max-w-7xl'
+      }`}>
+        {/* Floating Quick Button to Re-open Sidebar when collapsed on desktop */}
+        {isSidebarCollapsed && (
+          <button
+            onClick={handleToggleSidebarCollapse}
+            className="hidden lg:flex fixed left-0 top-20 z-20 items-center gap-1.5 px-3 py-2 bg-slate-900/95 text-white hover:bg-teal-700 rounded-r-xl shadow-lg border border-l-0 border-slate-700 text-xs font-semibold transition active:scale-95 group no-print cursor-pointer"
+            title="Klik untuk membuka menu samping"
+          >
+            <PanelLeftOpen className="w-4 h-4 text-teal-400 group-hover:text-white" />
+            <span className="text-[11px] font-bold">Buka Menu</span>
+          </button>
+        )}
+
         {/* Sidebar Navigation */}
         <Sidebar
           activeTab={activeTab}
@@ -123,10 +156,14 @@ export default function App() {
           pengajuanCount={pengajuanPending.length}
           role={role}
           onOpenAddLeave={() => handleOpenAddLeaveForPegawai()}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={handleToggleSidebarCollapse}
         />
 
         {/* Main Content Viewport */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 lg:pb-12 space-y-6 overflow-y-auto">
+        <main className={`flex-1 pb-24 lg:pb-12 space-y-6 overflow-y-auto min-w-0 transition-all duration-300 ${
+          isSidebarCollapsed ? 'p-3 sm:p-5 lg:p-6' : 'p-4 sm:p-6 lg:p-8'
+        }`}>
           {/* Status Alert if Google Apps Script sync message is present */}
           {syncStatus.message && (
             <div

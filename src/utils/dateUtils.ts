@@ -10,6 +10,29 @@ export function toDateString(d: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+// Strict check if string is valid YYYY-MM-DD
+export function isValidDateStr(val: any): boolean {
+  if (!val) return false;
+  const s = String(val).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const [y, m, d] = s.split('-').map(Number);
+  if (y < 1900 || y > 2100) return false;
+  if (m < 1 || m > 12) return false;
+  if (d < 1 || d > 31) return false;
+  return true;
+}
+
+// Add days to standard YYYY-MM-DD
+export function addDaysToDateStr(dateStr: string, days: number): string {
+  const norm = normalizeDateStr(dateStr);
+  if (!isValidDateStr(norm)) return dateStr;
+  const d = parseDate(norm);
+  // If adding days (e.g. 2 days starting today = today and tomorrow, so +1 day)
+  const daysToAdd = Math.max(0, days - 1);
+  d.setDate(d.getDate() + daysToAdd);
+  return toDateString(d);
+}
+
 // Normalize various date formats (ISO string, DD/MM/YYYY, MM/DD/YYYY, YYYY/MM/DD, timestamp, text) to standard YYYY-MM-DD
 export function normalizeDateStr(val: any): string {
   if (!val) return '';
@@ -19,13 +42,19 @@ export function normalizeDateStr(val: any): string {
   const str = String(val).trim();
   if (!str) return '';
 
+  // Reject strings that are obviously leave types, titles, numbers, etc.
+  if (/^(cuti|tahunan|sakit|melahirkan|alasan|besar|pengajuan|disetujui|ditolak|selesai)/i.test(str)) {
+    return '';
+  }
+
   // Match YYYY-MM-DD or YYYY/MM/DD (with optional time)
   const m1 = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
   if (m1) {
     const y = m1[1];
     const m = m1[2].padStart(2, '0');
     const d = m1[3].padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    const res = `${y}-${m}-${d}`;
+    return isValidDateStr(res) ? res : '';
   }
 
   // Match DD-MM-YYYY or MM-DD-YYYY or DD/MM/YYYY
@@ -41,7 +70,8 @@ export function normalizeDateStr(val: any): string {
       m = n1;
       d = n2;
     }
-    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const res = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    return isValidDateStr(res) ? res : '';
   }
 
   // Handle Indonesian prose: "25 September 2026" or "25 Sep 2026"
@@ -66,7 +96,8 @@ export function normalizeDateStr(val: any): string {
     };
     for (const key in indoMonths) {
       if (monthName.startsWith(key)) {
-        return `${y}-${String(indoMonths[key]).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const res = `${y}-${String(indoMonths[key]).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        return isValidDateStr(res) ? res : '';
       }
     }
   }
@@ -75,13 +106,14 @@ export function normalizeDateStr(val: any): string {
   try {
     const parsed = new Date(str);
     if (!isNaN(parsed.getTime())) {
-      return toDateString(parsed);
+      const res = toDateString(parsed);
+      return isValidDateStr(res) ? res : '';
     }
   } catch {
     // Ignore
   }
 
-  return str.substring(0, 10);
+  return '';
 }
 
 // Standardize Indonesian leave types ("Tahunan", "Cuti Tahunan", etc.)
@@ -182,15 +214,16 @@ export function parseDate(dateStr: string): Date {
 export function isDateInRange(targetDateStr: string, startStr: string, endStr: string): boolean {
   if (!targetDateStr || !startStr || !endStr) return false;
   const target = normalizeDateStr(targetDateStr);
-  let start = normalizeDateStr(startStr);
-  let end = normalizeDateStr(endStr);
-  if (!target || !start || !end) return false;
-  if (start > end) {
-    const tmp = start;
-    start = end;
-    end = tmp;
+  const start = normalizeDateStr(startStr);
+  const end = normalizeDateStr(endStr);
+  if (!isValidDateStr(target) || !isValidDateStr(start) || !isValidDateStr(end)) return false;
+  let s = start;
+  let e = end;
+  if (s > e) {
+    s = end;
+    e = start;
   }
-  return target >= start && target <= end;
+  return target >= s && target <= e;
 }
 
 // Check if leave is currently active today
@@ -201,8 +234,9 @@ export function isLeaveActiveToday(startStr: string, endStr: string, todayStr = 
 // Check if leave will start in the next N days (1 to N days from today)
 export function isLeaveStartingInNextDays(startStr: string, days = 3, todayStr = getTodayString()): boolean {
   const normStart = normalizeDateStr(startStr);
-  if (!normStart) return false;
-  const today = parseDate(todayStr);
+  const normToday = normalizeDateStr(todayStr);
+  if (!isValidDateStr(normStart) || !isValidDateStr(normToday)) return false;
+  const today = parseDate(normToday);
   const targetEnd = new Date(today);
   targetEnd.setDate(today.getDate() + days);
   
@@ -235,12 +269,10 @@ export function getCurrentWeekRange(refDate = getNow()): { start: string; end: s
 
 // Check if leave overlaps with the current week
 export function isLeaveOverlappingWeek(startStr: string, endStr: string, refDate = getNow()): boolean {
-  if (!startStr || !endStr) return false;
   const s = normalizeDateStr(startStr);
   const e = normalizeDateStr(endStr);
-  if (!s || !e) return false;
+  if (!isValidDateStr(s) || !isValidDateStr(e)) return false;
   const week = getCurrentWeekRange(refDate);
-  // Two ranges [A, B] and [C, D] overlap if max(A, C) <= min(B, D)
   return s <= week.end && e >= week.start;
 }
 
@@ -267,10 +299,9 @@ export function getCurrentMonthRange(refDate = getNow()): { start: string; end: 
 
 // Check if leave overlaps with the current month
 export function isLeaveOverlappingMonth(startStr: string, endStr: string, refDate = getNow()): boolean {
-  if (!startStr || !endStr) return false;
   const s = normalizeDateStr(startStr);
   const e = normalizeDateStr(endStr);
-  if (!s || !e) return false;
+  if (!isValidDateStr(s) || !isValidDateStr(e)) return false;
   const monthRange = getCurrentMonthRange(refDate);
   return s <= monthRange.end && e >= monthRange.start;
 }
@@ -298,10 +329,9 @@ export function getNextMonthRange(refDate = getNow()): { start: string; end: str
 
 // Check if leave overlaps with next month
 export function isLeaveOverlappingNextMonth(startStr: string, endStr: string, refDate = getNow()): boolean {
-  if (!startStr || !endStr) return false;
   const s = normalizeDateStr(startStr);
   const e = normalizeDateStr(endStr);
-  if (!s || !e) return false;
+  if (!isValidDateStr(s) || !isValidDateStr(e)) return false;
   const nextMonthRange = getNextMonthRange(refDate);
   return s <= nextMonthRange.end && e >= nextMonthRange.start;
 }

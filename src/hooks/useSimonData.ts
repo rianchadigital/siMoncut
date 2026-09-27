@@ -20,6 +20,8 @@ import {
   getNow,
   isSameUnit,
   normalizeDateStr,
+  isValidDateStr,
+  addDaysToDateStr,
   normalizeJenisCuti,
   normalizeTempatTugas,
   detectPegawaiTempatTugas,
@@ -60,6 +62,45 @@ function normalizePegawaiItem(p: any, idx = 0): Pegawai {
 // Helper to normalize cuti rows from storage or network
 function normalizeCutiItem(c: any): Cuti {
   const normUnit = detectPegawaiTempatTugas(c.tempatTugas, c.puskesmasPustu);
+  
+  let startRaw = c.tanggalMulai;
+  let endRaw = c.tanggalSelesai;
+  let days = Number(c.jumlahHari) || 1;
+  let jenisCuti = normalizeJenisCuti(c.jenisCuti);
+
+  // Self-Healing for Google Spreadsheet Column Shifts:
+  // If tanggalMulai received a leave type string (e.g. "Cuti Tahunan", "Cuti Melahirkan", etc.)
+  // and tanggalSelesai holds the actual start date (e.g. "2026-09-29")
+  const startNorm = normalizeDateStr(startRaw);
+  const endNorm = normalizeDateStr(endRaw);
+
+  const startIsValid = isValidDateStr(startNorm);
+  const endIsValid = isValidDateStr(endNorm);
+
+  let tanggalMulai = startNorm;
+  let tanggalSelesai = endNorm;
+
+  if (!startIsValid && endIsValid) {
+    // Column was shifted in spreadsheet: endRaw is actually the true start date!
+    tanggalMulai = endNorm;
+    tanggalSelesai = addDaysToDateStr(tanggalMulai, days);
+    // If startRaw contained the real leave type, ensure jenisCuti reflects it
+    if (/cuti|tahunan|sakit|melahirkan|alasan|besar|penting/i.test(String(startRaw))) {
+      jenisCuti = normalizeJenisCuti(startRaw);
+    }
+  } else if (startIsValid && !endIsValid) {
+    tanggalSelesai = addDaysToDateStr(tanggalMulai, days);
+  } else if (!startIsValid && !endIsValid) {
+    tanggalMulai = getTodayString();
+    tanggalSelesai = tanggalMulai;
+  }
+
+  // Check if tanggalPengajuan got corrupted by nomorSuratCuti
+  let tanggalPengajuan = normalizeDateStr(c.tanggalPengajuan);
+  if (!isValidDateStr(tanggalPengajuan)) {
+    tanggalPengajuan = isValidDateStr(tanggalMulai) ? tanggalMulai : getTodayString();
+  }
+
   return {
     ...c,
     idCuti: String(c.idCuti || `CUTI-${Math.floor(1000 + Math.random() * 9000)}`),
@@ -68,13 +109,13 @@ function normalizeCutiItem(c: any): Cuti {
     jabatan: String(c.jabatan || '').trim(),
     tempatTugas: normUnit,
     namaPengganti: c.namaPengganti ? String(c.namaPengganti).trim() : undefined,
-    jenisCuti: normalizeJenisCuti(c.jenisCuti) as any,
-    tanggalMulai: normalizeDateStr(c.tanggalMulai),
-    tanggalSelesai: normalizeDateStr(c.tanggalSelesai),
-    jumlahHari: Number(c.jumlahHari) || 1,
+    jenisCuti: jenisCuti as any,
+    tanggalMulai,
+    tanggalSelesai,
+    jumlahHari: days,
     alasan: String(c.alasan || '').trim(),
     nomorSuratCuti: String(c.nomorSuratCuti || '').trim(),
-    tanggalPengajuan: normalizeDateStr(c.tanggalPengajuan) || getTodayString(),
+    tanggalPengajuan,
     statusPersetujuan: String(c.statusPersetujuan || 'Disetujui').trim() as any,
     pejabatPenyetuju: String(c.pejabatPenyetuju || '').trim(),
     catatan: String(c.catatan || '').trim(),
@@ -471,44 +512,49 @@ export function useSimonData() {
     });
   }, [cutiList, filters]);
 
-  // Specific Time-Based Leaves - show all non-rejected leaves (both Disetujui & Pengajuan)
+  // Specific Time-Based Leaves - strictly active non-finished non-rejected leaves
   const cutiHariIni = useMemo(() => {
+    const currentToday = getTodayString();
     return cutiList.filter((c) => {
       const s = (c.statusPersetujuan || '').trim().toLowerCase();
-      if (s === 'ditolak') return false;
-      return isLeaveActiveToday(c.tanggalMulai, c.tanggalSelesai, todayStr);
+      if (s === 'ditolak' || s === 'selesai') return false;
+      return isLeaveActiveToday(c.tanggalMulai, c.tanggalSelesai, currentToday);
     });
   }, [cutiList, todayStr]);
 
   const cuti3Hari = useMemo(() => {
+    const currentToday = getTodayString();
     return cutiList.filter((c) => {
       const s = (c.statusPersetujuan || '').trim().toLowerCase();
-      if (s === 'ditolak') return false;
-      return isLeaveStartingInNextDays(c.tanggalMulai, 3, todayStr);
+      if (s === 'ditolak' || s === 'selesai') return false;
+      return isLeaveStartingInNextDays(c.tanggalMulai, 3, currentToday);
     });
   }, [cutiList, todayStr]);
 
   const cutiMingguIni = useMemo(() => {
+    const currentNow = getNow();
     return cutiList.filter((c) => {
       const s = (c.statusPersetujuan || '').trim().toLowerCase();
-      if (s === 'ditolak') return false;
-      return isLeaveOverlappingWeek(c.tanggalMulai, c.tanggalSelesai, now);
+      if (s === 'ditolak' || s === 'selesai') return false;
+      return isLeaveOverlappingWeek(c.tanggalMulai, c.tanggalSelesai, currentNow);
     });
   }, [cutiList, now]);
 
   const cutiBulanIni = useMemo(() => {
+    const currentNow = getNow();
     return cutiList.filter((c) => {
       const s = (c.statusPersetujuan || '').trim().toLowerCase();
-      if (s === 'ditolak') return false;
-      return isLeaveOverlappingMonth(c.tanggalMulai, c.tanggalSelesai, now);
+      if (s === 'ditolak' || s === 'selesai') return false;
+      return isLeaveOverlappingMonth(c.tanggalMulai, c.tanggalSelesai, currentNow);
     });
   }, [cutiList, now]);
 
   const cutiBulanDepan = useMemo(() => {
+    const currentNow = getNow();
     return cutiList.filter((c) => {
       const s = (c.statusPersetujuan || '').trim().toLowerCase();
-      if (s === 'ditolak') return false;
-      return isLeaveOverlappingNextMonth(c.tanggalMulai, c.tanggalSelesai, now);
+      if (s === 'ditolak' || s === 'selesai') return false;
+      return isLeaveOverlappingNextMonth(c.tanggalMulai, c.tanggalSelesai, currentNow);
     });
   }, [cutiList, now]);
 

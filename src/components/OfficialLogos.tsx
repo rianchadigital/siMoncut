@@ -20,12 +20,15 @@ export function formatGoogleDriveImageUrl(url?: string): string | undefined {
  * Official Lambang Daerah Khusus Ibukota Jakarta (Jaya Raya)
  * Monas, Padi & Kapas, Perisai Segi Lima, Gerbang Merah & Kuning Emas
  */
-export const LogoJayaRaya: React.FC<{ className?: string; customSrc?: string }> = ({
+export const LogoJayaRaya: React.FC<{ className?: string; customSrc?: string; hidden?: boolean }> = ({
   className = 'w-20 h-20',
   customSrc,
+  hidden = false,
 }) => {
   const [imgError, setImgError] = useState(false);
   const resolvedSrc = formatGoogleDriveImageUrl(customSrc);
+
+  if (hidden) return null;
 
   if (resolvedSrc && !imgError) {
     return (
@@ -141,12 +144,15 @@ export const LogoJayaRaya: React.FC<{ className?: string; customSrc?: string }> 
  * Official Logo Kesehatan (Kemenkes & Puskesmas Indonesia - Permenkes 43/2019)
  * Hexagon Hijau, Palang Hijau, Atap Rumah, Dua Lingkaran Putih Komunitas
  */
-export const LogoKesehatan: React.FC<{ className?: string; customSrc?: string }> = ({
+export const LogoKesehatan: React.FC<{ className?: string; customSrc?: string; hidden?: boolean }> = ({
   className = 'w-20 h-20',
   customSrc,
+  hidden = false,
 }) => {
   const [imgError, setImgError] = useState(false);
   const resolvedSrc = formatGoogleDriveImageUrl(customSrc);
+
+  if (hidden) return null;
 
   if (resolvedSrc && !imgError) {
     return (

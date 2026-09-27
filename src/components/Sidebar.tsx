@@ -14,6 +14,7 @@ import {
   Building2,
   X,
   CalendarPlus,
+  PanelLeftClose,
 } from 'lucide-react';
 import { UserRole } from '../types';
 import { LogoJayaRaya, LogoKesehatan } from './OfficialLogos';
@@ -40,6 +41,8 @@ interface SidebarProps {
   pengajuanCount: number;
   role: UserRole;
   onOpenAddLeave?: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -51,6 +54,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   pengajuanCount,
   role,
   onOpenAddLeave,
+  isCollapsed = false,
+  onToggleCollapse,
 }) => {
   const navItems: { id: NavTab; label: string; icon: React.ReactNode; badge?: number; highlight?: boolean; pimpinanOnly?: boolean }[] = [
     { id: 'dashboard', label: 'Dashboard Utama', icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -81,30 +86,52 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onCloseMobile();
   };
 
+  const hideLogoJaya = typeof window !== 'undefined' ? localStorage.getItem('simon_hide_logo_jaya') !== 'false' : true;
+  const hideLogoKemenkes = typeof window !== 'undefined' ? localStorage.getItem('simon_hide_logo_kemenkes') !== 'false' : true;
+
   const content = (
     <div className="flex flex-col h-full bg-slate-900 text-slate-200">
       {/* Brand & Subtitle */}
       <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-800 border border-slate-700 shadow-inner shrink-0">
-            <LogoJayaRaya className="w-7 h-8 object-contain" />
-            <div className="w-px h-5 bg-slate-600" />
-            <LogoKesehatan className="w-7 h-8 object-contain" />
-          </div>
-          <div>
-            <div className="text-base font-black text-white tracking-wide">SiMONCUT</div>
-            <div className="text-[10px] text-teal-300 font-semibold leading-tight">Sistem Monitoring Cuti Pegawai</div>
-            <div className="text-[9px] text-slate-400 font-medium">Puskesmas Kep. Seribu Selatan</div>
+        <div className="flex items-center gap-2.5 min-w-0">
+          {(!hideLogoJaya || !hideLogoKemenkes) ? (
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-800 border border-slate-700 shadow-inner shrink-0">
+              {!hideLogoJaya && <LogoJayaRaya className="w-7 h-8 object-contain" />}
+              {!hideLogoJaya && !hideLogoKemenkes && <div className="w-px h-5 bg-slate-600" />}
+              {!hideLogoKemenkes && <LogoKesehatan className="w-7 h-8 object-contain" />}
+            </div>
+          ) : (
+            <div className="w-8 h-8 rounded-lg bg-teal-600/90 border border-teal-500/40 flex items-center justify-center font-black text-white text-xs shadow-xs shrink-0 font-mono">
+              SC
+            </div>
+          )}
+          <div className="min-w-0">
+            <div className="text-base font-black text-white tracking-wide truncate">SiMONCUT</div>
+            <div className="text-[10px] text-teal-300 font-semibold leading-tight truncate">Sistem Monitoring Cuti</div>
+            <div className="text-[9px] text-slate-400 font-medium truncate">Puskesmas Kep. Seribu Selatan</div>
           </div>
         </div>
 
-        {/* Mobile close button */}
-        <button
-          onClick={onCloseMobile}
-          className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          {/* Desktop Sembunyikan Menu Button */}
+          {onToggleCollapse && (
+            <button
+              onClick={onToggleCollapse}
+              title="Sembunyikan menu samping (Perlebar tampilan)"
+              className="hidden lg:flex items-center justify-center p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+            >
+              <PanelLeftClose className="w-4 h-4 text-slate-400 hover:text-teal-300" />
+            </button>
+          )}
+
+          {/* Mobile close button */}
+          <button
+            onClick={onCloseMobile}
+            className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Nav List */}
@@ -169,6 +196,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </React.Fragment>
           );
         })}
+        {/* Tombol Sembunyikan Menu Navigasi Samping */}
+        {onToggleCollapse && (
+          <div className="pt-3 px-1 pb-1">
+            <button
+              onClick={onToggleCollapse}
+              className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold text-slate-300 hover:text-white bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700/80 transition active:scale-98 shadow-xs cursor-pointer group"
+              title="Sembunyikan menu samping agar tampilan konten tabel lebih lebar"
+            >
+              <PanelLeftClose className="w-4 h-4 text-teal-400 group-hover:text-teal-300" />
+              <span>Sembunyikan Menu</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Footer Info Box & Tagline */}
@@ -200,8 +240,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {/* Desktop Persistent Sidebar */}
-      <aside className="hidden lg:block w-64 shrink-0 border-r border-slate-800 h-[calc(100vh-57px)] sticky top-[57px] overflow-hidden no-print">
-        {content}
+      <aside
+        className={`hidden lg:block shrink-0 border-r border-slate-800 h-[calc(100vh-57px)] sticky top-[57px] overflow-hidden no-print transition-all duration-300 ease-in-out ${
+          isCollapsed ? 'w-0 border-none opacity-0 pointer-events-none' : 'w-64 opacity-100'
+        }`}
+      >
+        <div className="w-64 h-full">
+          {content}
+        </div>
       </aside>
 
       {/* Mobile Drawer Backdrop */}

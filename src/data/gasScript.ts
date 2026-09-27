@@ -216,9 +216,19 @@ function getCuti() {
   var headers = values[0].map(function(h) { return String(h || '').toLowerCase().trim(); });
 
   function findCol(keywords, fallbackIdx) {
+    // 1. Exact match first
     for (var k = 0; k < keywords.length; k++) {
-      var idx = headers.indexOf(keywords[k]);
-      if (idx !== -1) return idx;
+      var target = keywords[k].toLowerCase().trim();
+      for (var col = 0; col < headers.length; col++) {
+        if (headers[col] === target) return col;
+      }
+    }
+    // 2. Substring match
+    for (var k2 = 0; k2 < keywords.length; k2++) {
+      var target2 = keywords[k2].toLowerCase().trim();
+      for (var col2 = 0; col2 < headers.length; col2++) {
+        if (headers[col2].indexOf(target2) !== -1) return col2;
+      }
     }
     return fallbackIdx;
   }
@@ -234,9 +244,9 @@ function getCuti() {
   var colTempat = findCol(['tempat tugas', 'unit kerja', 'unit'], 4);
   var colPengganti = findCol(['nama pengganti cuti', 'nama pengganti', 'pengganti'], hasPengganti ? 5 : -1);
   var colJenis = findCol(['jenis cuti', 'jenis'], 5 + offset);
-  var colMulai = findCol(['tanggal mulai', 'tgl mulai', 'mulai'], 6 + offset);
-  var colSelesai = findCol(['tanggal selesai', 'tgl selesai', 'selesai'], 7 + offset);
-  var colHari = findCol(['jumlah hari', 'jml hari', 'hari'], 8 + offset);
+  var colMulai = findCol(['tanggal mulai', 'tgl mulai', 'tgl. mulai', 'mulai cuti', 'mulai'], 6 + offset);
+  var colSelesai = findCol(['tanggal selesai', 'tgl selesai', 'tgl. selesai', 'selesai cuti', 'selesai'], 7 + offset);
+  var colHari = findCol(['jumlah hari', 'jml hari', 'lama cuti', 'hari'], 8 + offset);
   var colAlasan = findCol(['alasan/keterangan', 'alasan', 'keterangan'], 9 + offset);
   var colSurat = findCol(['nomor surat cuti', 'nomor surat', 'no surat'], 10 + offset);
   var colPengajuan = findCol(['tanggal pengajuan', 'tgl pengajuan'], 11 + offset);
@@ -250,9 +260,25 @@ function getCuti() {
     var row = values[i];
     if (!row[colId] && !row[colNip] && !row[colNama]) continue;
 
-    var startStr = formatDateString(row[colMulai]);
-    var endStr = formatDateString(row[colSelesai]);
+    var startVal = row[colMulai];
+    var endVal = row[colSelesai];
+    var daysVal = Number(row[colHari]) || 1;
+
+    var startStr = formatDateString(startVal);
+    var endStr = formatDateString(endVal);
+
+    // Auto-detect column shift if startStr got jenis cuti
+    if ((!startStr || !startStr.match(/^\d{4}-\d{2}-\d{2}/) || /cuti|tahunan|sakit|melahirkan/i.test(String(startVal))) && endStr && endStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+      startStr = endStr;
+      var d = new Date(startStr);
+      d.setDate(d.getDate() + Math.max(0, daysVal - 1));
+      endStr = Utilities.formatDate(d, 'Asia/Jakarta', 'yyyy-MM-dd');
+    }
+
     var pengajuanStr = formatDateString(row[colPengajuan]);
+    if (!pengajuanStr || !pengajuanStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+      pengajuanStr = startStr || getTodayFormatted();
+    }
 
     result.push({
       idCuti: String(row[colId] || ('CUTI-' + i)).trim(),
