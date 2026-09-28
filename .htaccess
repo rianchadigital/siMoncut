@@ -4,34 +4,33 @@
 # Tagline: “Pantau Cuti, Mudahkan Pengelolaan Kepegawaian”
 # ====================================================================
 
-# 1. Pastikan Apache memprioritaskan dist/index.html atau index.php, BUKAN root index.html mentah
-DirectoryIndex dist/index.html index.php index.html
+# 1. Pastikan Apache memprioritaskan index.php agar auto-sync dan update bundle berjalan
+DirectoryIndex index.php dist/index.html index.html
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
 
-  # JANGAN PERNAH menyajikan root index.html mentah ke pengunjung (karena itu template Vite dev)
-  RewriteRule ^index\.html$ dist/index.html [L]
+  # Jika parameter pemicu pembaruan dipanggil (?update=1, ?sync=1, dll)
+  RewriteCond %{QUERY_STRING} (update|sync|rebuild|refresh) [NC]
+  RewriteRule ^ index.php [L]
+
+  # Jangan pernah menyajikan template root index.html mentah
+  RewriteRule ^index\.html$ index.php [L]
+
+  # Jika URL root diakses, arahkan ke index.php untuk validasi dan penyajian versi terbaru
+  RewriteRule ^$ index.php [L]
 
   # Jika file yang diminta ada di dalam folder dist/ (seperti assets, favicon, manifest, sw)
-  # Arahkan langsung ke file tersebut di dist/
   RewriteCond %{DOCUMENT_ROOT}/dist/$1 -f
   RewriteRule ^(.*)$ dist/$1 [L]
 
-  # Jika URL adalah root (/) arahkan langsung ke dist/index.html
-  RewriteRule ^$ dist/index.html [L]
-
-  # Izinkan akses langsung jika file memang ada di root (misal robots.txt, index.php)
+  # Izinkan akses langsung jika file memang ada di root (misal robots.txt, version.json, dll)
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
 
-  # Semua rute SPA lainnya (misal /cuti, /laporan, dll) diarahkan ke dist/index.html
-  RewriteCond %{DOCUMENT_ROOT}/dist/index.html -f
-  RewriteRule ^.*$ dist/index.html [L]
-
-  # Fallback terakhir ke index.php jika dist tidak sengaja hilang
+  # Semua rute SPA lainnya dialihkan ke index.php (yang menyajikan dist/index.html terbaru)
   RewriteRule ^.*$ index.php [L]
 </IfModule>
 

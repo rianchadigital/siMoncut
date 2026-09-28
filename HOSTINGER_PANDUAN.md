@@ -33,8 +33,18 @@ Jika Anda sempat melihat pesan di atas saat membuka domain di Hostinger, hal ter
 1. Masuk ke **hPanel Hostinger**.
 2. Buka menu **Tingkat Lanjut (Advanced)** > **Git**.
 3. Di samping nama repositori Anda, klik tombol **Tarik Cabang (Pull)** atau **Deploy**.
-4. Buka kembali alamat website Anda di browser (tekan `Ctrl + F5` atau `Cmd + Shift + R` untuk hard refresh).
-5. **Website SiMONCUT langsung tampil lengkap dengan seluruh fiturnya!**
+
+### Langkah 3: Eksekusi Sinkronisasi Instan & Buka Aplikasi
+1. Buka browser dan akses alamat website Anda dengan menambahkan `?update=1` di belakangnya, contoh:  
+   👉 `https://namadomain-anda.com/?update=1`
+2. Sistem `index.php` akan secara otomatis mendeteksi bundle baru, mengekstrak seluruh file terbaru, membersihkan cache server, dan menampilkan pesan konfirmasi:  
+   **"Pembaruan Berhasil Diaplikasikan!"**
+3. Aplikasi akan membuka halaman utama dengan seluruh tampilan dan fitur paling baru secara instan.
+
+> 💡 **PENTING (Jika Tampilan Masih Terlihat Lama):**  
+> Browser menyimpan cache PWA / Service Worker lokal. Untuk memaksa browser mengambil aset terbaru:
+> - Tekan tombol **Ctrl + Shift + R** (Windows/Linux) atau **Cmd + Shift + R** (Mac) di keyboard.
+> - Atau di Google Chrome: Tekan `F12` > tab **Application** > **Storage** > klik tombol **Clear site data**.
 
 ---
 
